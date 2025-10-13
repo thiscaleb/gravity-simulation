@@ -23,6 +23,12 @@ float normalize(double value, double min, double max) {
     return (float)(2.0 * (value - min) / (max - min) - 1.0);
 }
 
+// normalize a two_d_vectpr to something that opengl can render
+two_d_vector normalize_vec2(two_d_vector vec, double min, double max) {
+    two_d_vector n_vec = {(2.0 * (vec.x - min) / (max - min) - 1.0), (2.0 * (vec.y - min) / (max - min) - 1.0)};
+    return n_vec;
+}
+
 // Scale up a vector vec by s
 two_d_vector scale_vec2(two_d_vector vec, double s){
     two_d_vector scaled = {vec.x * s, vec.y * s};
@@ -136,12 +142,11 @@ void coint_runge_kutta(double t, double h, two_d_body *body1, two_d_body *body2)
 }
 
 // Fourth-Order Runge-Kutta algorithm
-// implemented for 2nd ODEs
+// implemented for one body system (m1 >> m2)
 // t is the current time. Will be 0 for our case here (Newtonian Physiscs)
 // h is the step size
 // x is position
 // v is velocity (derivative of velocity)
-// r is the distance between two masses in 2d space (needed for f_v())
 // m is the mass of the object 
 // f_x() and f_v() are the functions that return the derivates of x and v (so v and a)
 // in our sim, f_v() = the accel calc, and f_x() is a step

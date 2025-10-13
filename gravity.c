@@ -7,13 +7,14 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 double gravity_equation(double m1, double m2, double r);
 double gravity_acceleration(double M, double r);
 
-two_d_vector* equation_of_motion( two_d_body *b1,  two_d_body *b2);
-two_d_vector* relative_equation_of_motion( two_d_body *b1,  two_d_body *b2);
-two_d_vector* rk4_equation_of_motion( two_d_body *b1, two_d_body *b2);
+two_d_vector* equation_of_motion( two_d_body *b1,  two_d_body *b2, float delta_t);
+two_d_vector* relative_equation_of_motion( two_d_body *b1,  two_d_body *b2, float delta_t);
+two_d_vector* rk4_equation_of_motion( two_d_body *b1, two_d_body *b2, float delta_t);
 
 
 typedef struct point{
@@ -25,18 +26,37 @@ typedef struct{
     point *head;
 } points_list;
 
-void init_list(points_list *pL){
+points_list* init_list(){
+
+    points_list *pL = (points_list *)malloc(sizeof(points_list));
+    if(pL == NULL){
+        printf("uh oh");
+        exit(1);
+    }
     pL->head = NULL;
+    return pL;
 }
 
 // add new point P to head of list
 void add_to_list(points_list *pL, point *p){
+    //check if the data is similar. if it's within a certain range, don't add it.
     p->next = pL->head;
     pL->head = p;    
 }
 
+void free_list(points_list *pL){
+    point *iterator;   
+    while(pL->head != NULL){
+        iterator = pL->head;
+        pL->head = pL->head->next;
+        free(iterator);
+    }
+}
+
 // Function to draw a circle at (cx, cy) with radius 
-void drawCircle(float cx, float cy, float r, int num_segments) {
+void drawCircle(two_d_vector c, float r, int num_segments) {
+    float cx = c.x;
+    float cy = c.y;
     glBegin(GL_TRIANGLE_FAN);
     glVertex2f(cx, cy);  // Center of circle
 
@@ -69,7 +89,7 @@ void drawOrbits(points_list *orbit){
     glEnd();
 }
 
-int render( two_d_body* body1,  two_d_body* body2) {
+int render( two_d_body* body1,  two_d_body* body2, bool DEBUG) {
     if (!glfwInit()) {
         fprintf(stderr, "Failed to initialize GLFW\n");
         return EXIT_FAILURE;
@@ -99,42 +119,55 @@ int render( two_d_body* body1,  two_d_body* body2) {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
+
+    // used to measure frametime
+    double lastTime = glfwGetTime();
+    int nbFrames = 0;
+
     int run = 0;
 
-    double x_min = -1.5 * AU;
-    double x_max = 1.5 * AU;
-
-    double y_min = -1.5 * AU;
-    double y_max = 1.5 * AU;    
+    //used for normalization
+    double min = -1.5 * AU;
+    double max = 1.5 * AU;    
 
 
     //list of points in the planet was at. used to draw orbits
-    points_list orbit1, orbit2;
-    init_list(&orbit1);
-    init_list(&orbit2);
+    int num_bodies = 2;
+    points_list* orbits_list[num_bodies];
+    for(int i = 0; i < 2; i++){
+        orbits_list[i] = init_list();
+    }
+
 
     // Render loop
     // -1 is defined as the infinite run condition
    while (!glfwWindowShouldClose(window) && (RUN_LIMIT == -1 || run <= RUN_LIMIT)) {
 
-        float normalized_pos[4];
 
-        normalized_pos[0] = normalize(body1->pos.x, x_min, x_max);
-        normalized_pos[1] = normalize(body1->pos.y, y_min, y_max);
-        normalized_pos[2] = normalize(body2->pos.x, x_min, x_max);
-        normalized_pos[3] = normalize(body2->pos.y, y_min, y_max);
+        // Frame timer
+        double currentTime = glfwGetTime();
+        nbFrames++;
 
+        if ( currentTime - lastTime >= 1.0 && DEBUG){ // If last prinf() was more than 1 sec ago
+            // printf and reset timer
+            // debug printf statements
+            double r = sqrt(((body1->pos.x - body2->pos.x)*(body1->pos.x - body2->pos.x)) + ((body1->pos.y - body2->pos.y)*(body1->pos.y - body2->pos.y)));
+            printf("\n Current Frame = %d", run);
+            printf("\n%f ms/frame", 1000.0/(double)(nbFrames));
+            printf("\n Distance between B1 and B2 = %lf", r);
+            printf("\n B1 Velocity = {%lf, %lf}", body1->velocity.x, body1->velocity.y);
+            printf("\n B1 Position = {%lf, %lf}", body1->pos.x, body1->pos.y);
+            printf("\n B2 Velocity = {%lf, %lf}", body2->velocity.x, body2->velocity.y);
+            printf("\n B2 Position = {%lf, %lf}", body2->pos.x, body2->pos.y);
+            nbFrames = 0;
+            lastTime += 1.0;
+        }
 
-        //normalize the center of mass
-        // float com_x = normalize(barycenter->x, x_min, x_max);
-        // float com_y = normalize(barycenter->y, y_min, y_max);
+        two_d_vector *cent_of_m = rk4_equation_of_motion(body1, body2, 10000.0f);
+        // two_d_vector *cent_of_m = equation_of_motion(body1, body2, 100000.0f);
+        // two_d_vector *cent_of_m = relative_equation_of_motion(body1, body2, 10000.0f);
 
-         two_d_vector *cent_of_m = rk4_equation_of_motion(body1, body2);
-        //  two_d_vector *cent_of_m = equation_of_motion(body1, body2);
-
-        cent_of_m->x = normalize(cent_of_m->x, x_min, x_max);
-        cent_of_m->y = normalize(cent_of_m->y, y_min, y_max);
-        
+        *cent_of_m = normalize_vec2(*cent_of_m, min, max);
 
         // Clear the screen
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
@@ -142,30 +175,30 @@ int render( two_d_body* body1,  two_d_body* body2) {
 
         // Mass 1
         glColor3f(1.0f, 0.5f, 0.2f); 
-        drawCircle(normalized_pos[0], normalized_pos[1], normalize(4 * body1->radius,x_min, x_max), 100);
+        two_d_vector m1_grid_coords = normalize_vec2(body1->pos, min, max);
+        drawCircle(m1_grid_coords, normalize(2 * body1->radius,min, max), 100); //add smth to normalize size of bodies
         // drawCircle(normalized_pos[0], normalized_pos[1], 0.03f, 100);
 
         // Mass 2
         glColor3f(0.2f, 0.7f, 1.0f);  
-        drawCircle(normalized_pos[2], normalized_pos[3], normalize(2 * body2->radius,x_min, x_max), 100);
+        two_d_vector m2_grid_coords = normalize_vec2(body2->pos,min,max);
+        drawCircle(m2_grid_coords, normalize(2 * body2->radius,min, max), 100);
         // drawCircle(normalized_pos[2], normalized_pos[3], 0.02f, 100);
 
         point *new_point = ( point * )malloc(sizeof(point));
-        two_d_vector curr_pos = {normalized_pos[2], normalized_pos[3]};
-        new_point->pos = curr_pos;
-        add_to_list(&orbit1, new_point);
+        new_point->pos = m1_grid_coords;
+        add_to_list(orbits_list[0], new_point);
 
         point *new_point2 = ( point * )malloc(sizeof(point));
-        two_d_vector curr_pos2 = {normalized_pos[0], normalized_pos[1]};
-        new_point2->pos = curr_pos2;
-        add_to_list(&orbit2, new_point2);
+        new_point2->pos = m2_grid_coords;
+        add_to_list(orbits_list[1], new_point2);
 
-        drawOrbits(&orbit1);
-        drawOrbits(&orbit2);
+        drawOrbits(orbits_list[0]);
+        drawOrbits(orbits_list[1]);
 
         // Center of Mass
         glColor3f(0.2f, 1.0f, 0.3f);  
-        drawCircle(cent_of_m->x, cent_of_m->y, 0.005f, 100);
+        drawCircle(*cent_of_m, 0.005f, 100);
 
 
         glfwSwapBuffers(window);
@@ -178,8 +211,10 @@ int render( two_d_body* body1,  two_d_body* body2) {
         glfwWaitEventsTimeout(0.008);
         
         free(cent_of_m);
-
     }
+
+    free_list(orbits_list[0]);
+    free_list(orbits_list[1]);
 
     // Cleanup
     glfwDestroyWindow(window);
@@ -240,7 +275,7 @@ double gravity_acceleration(double M, double r){
 
 // For simplicity, I'm implementing this in 2D for now, thus ignoring the Z axis
 // this returns the center of mass between the objects as a 2d vector
-two_d_vector* equation_of_motion( two_d_body *b1,  two_d_body *b2){
+two_d_vector* equation_of_motion( two_d_body *b1,  two_d_body *b2, float delta_t){
     //double R; //this is the absolute gravitational accel between the two, and our result
 
     double m1, m2; //mass of the object
@@ -272,7 +307,6 @@ two_d_vector* equation_of_motion( two_d_body *b1,  two_d_body *b2){
         printf("ERROR: r IS NAN. ABORTING...\n");
         exit(1);
     }
-    printf("r is = %lf \n", r);
 
     if(r < 1){
         printf("\n The objects collided");
@@ -290,14 +324,8 @@ two_d_vector* equation_of_motion( two_d_body *b1,  two_d_body *b2){
     double ddx_2_0 = G * m1 * (x1 - x2)/(r * r * r);
     double ddy_2_0 = G * m1 * (y1 - y2)/(r * r * r);
 
-    printf("Initial acceleration of b1 in X = %lf \n", ddx_1_0);
-    printf("Initial acceleration of b1 in Y = %lf \n", ddy_1_0);
-
-    printf("Initial acceleration of b2 in X = %lf \n", ddx_2_0);
-    printf("Initial acceleration of b2 in Y = %lf \n", ddy_2_0);
 
     //this is in seconds
-    double delta_t = 1.0F;
 
     // calculate the current velocities
     double dx_1_1 = ddx_1_0 * delta_t + dx_1_0;
@@ -306,25 +334,12 @@ two_d_vector* equation_of_motion( two_d_body *b1,  two_d_body *b2){
     double dy_2_1 = ddy_2_0 * delta_t + dy_2_0;
 
 
-    printf("Velocity X = %lf\n", dx_1_1);
-    printf("Velocity Y = %lf\n", dy_1_1);
-    printf("Velocity X = %lf\n", dx_2_1);
-    printf("Velocity Y = %lf\n", dy_2_1);
-
-
     // calculate positions
     //CHECK THIS EQUATION
     double x_1_1 = (dx_1_1 * delta_t) + x1;
     double y_1_1 = dy_1_1 * delta_t + y1;
     double x_2_1 = dx_2_1 * delta_t + x2;
     double y_2_1 = dy_2_1 * delta_t + y2;
-
-
-    printf("m1 Position X = %lf\n", x_1_1);
-    printf("m1 Position Y = %lf\n", y_1_1);
-    printf("m2 Position X = %lf\n", x_2_1);
-    printf("m2 Position Y = %lf\n", y_2_1);
-
 
     b1->pos.x = x_1_1;
     b1->pos.y = y_1_1;
@@ -336,7 +351,7 @@ two_d_vector* equation_of_motion( two_d_body *b1,  two_d_body *b2){
     b2->velocity.x = dx_2_1;
     b2->velocity.y = dy_2_1;
 
-     two_d_vector *barycenter = find_cog(m1, b1->pos, m2, b2->pos);
+    two_d_vector *barycenter = find_cog(m1, b1->pos, m2, b2->pos);
 
     return barycenter;
 
@@ -344,55 +359,17 @@ two_d_vector* equation_of_motion( two_d_body *b1,  two_d_body *b2){
 
 // equation of motion in reference frame attached to b1, where mass b1 >> b2
 // still using 2d equation
- two_d_vector* relative_equation_of_motion( two_d_body *b1,  two_d_body *b2){
+ two_d_vector* relative_equation_of_motion( two_d_body *b1,  two_d_body *b2, float delta_t){
 
-    double x,y;
-
-    x = b2->pos.x;
-    y = b2->pos.y;
-
-    double dx_0 = b2->velocity.x;
-    double dy_0 = b2->velocity.y;
-
-    double mu = standard_gravitational_parameter(b1->mass);
+    double x = b2->pos.x;
+    double y = b2->pos.y;
+    //m is the mass of the stationary object, body1
+    runge_kutta(0, delta_t, b1->mass , b2);
 
     double r = sqrt(((0.0 - x)*(0.0 - x)) + ((0.0 - y)*(0.0 - y))); // since this is relative frame, the other set would be (0)
 
-    double mag_r = sqrt((x)*(x) + (y)*(y)); 
-
-    printf("\n relative r = %lf",r);
-
-    double ddx = (-(mu) * x) / (r * r * r);
-    double ddy = (-(mu) * y) / (r * r * r);
-
-    printf("\nRelative accel X: %lf and Y: %lf", ddx, ddy);
-
-    //this is in seconds
-    double delta_t = 15.0F;
-
-    // calculate the current velocities
-    double dx_1 = (ddx * delta_t) + dx_0;
-    double dy_1 = (ddy* delta_t) + dy_0;
-
-    printf("Velocity X = %lf\n", dx_1);
-    printf("Velocity Y = %lf\n", dy_1);
-
-    // calculate positions
-    //CHECK THIS EQUATION
-    double x_1 = dx_1 * delta_t + x;
-    double y_1 = dy_1 * delta_t + y;
-
-    printf("m1 Position X = %lf\n", x_1);
-    printf("m1 Position Y = %lf\n", y_1);
-
-    b2->pos.x = x_1;
-    b2->pos.y = y_1;
-    b2->velocity.x = dx_1;
-    b2->velocity.y = dy_1;
-
-    double alt = fabs(mag_r) - b1->radius;
-    printf("Altitude is: %lf", alt);
-
+    double alt = fabs(r) - b1->radius;
+    printf("\nAltitude is: %lf", alt);
     if(alt < 0.0){
         printf("\nObject crashed into planet!");
         exit(0);
@@ -404,19 +381,11 @@ two_d_vector* equation_of_motion( two_d_body *b1,  two_d_body *b2){
 
 }
 
- two_d_vector* rk4_equation_of_motion( two_d_body *b1, two_d_body *b2){
+ two_d_vector* rk4_equation_of_motion( two_d_body *b1, two_d_body *b2, float delta_t){
 
-    coint_runge_kutta(0, 10000.0, b1, b2);
-
-    printf("\n B1 Velocity = {%lf, %lf}", b1->velocity.x, b1->velocity.y);
-    printf("\n B1 Position = {%lf, %lf}", b1->pos.x, b1->pos.y);
-    printf("\n B2 Velocity = {%lf, %lf}", b2->velocity.x, b2->velocity.y);
-    printf("\n B2 Position = {%lf, %lf}", b2->pos.x, b2->pos.y);
+    coint_runge_kutta(0, delta_t, b1, b2);
 
     double r = sqrt(((b1->pos.x - b2->pos.x)*(b1->pos.x - b2->pos.x)) + ((b1->pos.y - b2->pos.y)*(b1->pos.y - b2->pos.y)));
-
-    printf("\n Distance between B1 and B2 = %lf", r);
-
 
     if (r <= b1->radius + b2->radius){
         printf("\n B1 and B2 have collided. Ending simulation....");
@@ -440,8 +409,6 @@ int main(){
      two_d_body *body1 = ( two_d_body*) malloc(sizeof( two_d_body)*2);
 
      two_d_body *body2 = ( two_d_body*) malloc(sizeof( two_d_body)*2);
-
-    // gravity_equation();
 
     body1->mass = mass_sun;
     body2->mass =  mass_sun;
@@ -478,7 +445,9 @@ int main(){
 
     //printf("Scharzchild Radius %lfm", scharzchild_radius(mass_earth));
 
-    render(body1, body2);
+    bool DEBUG = true; // If TRUE, print debug statements once a second
+
+    render(body1, body2, DEBUG);
 
     // body2->pos.x = 8000E3;
     // body2->pos.y = 6000E3;
