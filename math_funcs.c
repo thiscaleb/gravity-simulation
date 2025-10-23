@@ -90,34 +90,34 @@ two_d_vector f_v_inertial(double t,two_d_vector self_pos, two_d_vector other_pos
     return ddx;
 }
 
+
 // RK4 Helper Function
 // Models acceleration relative to the Center of Gravity
 two_d_vector f_v_rel_cog(double t, two_d_vector self_pos, two_d_vector other_pos, double mass_other, double mass_self){
 
-    // these are two position vectors
-    two_d_vector x = self_pos;
-    two_d_vector z = other_pos;
+    two_d_vector r_vec = subtract_vec2s(other_pos, self_pos);
 
-    two_d_vector com = find_cog(mass_self, x, mass_other, z);
-
-    // TODO: Add some vector funcs here to clean this up
-    double r = sqrt(((com.x -x.x)*(com.x - x.x)) + ((com.y - x.y)*(com.y - x.y)));
+    double r = sqrt(r_vec.x * r_vec.x + r_vec.y * r_vec.y);
 
     const double epsilon = 1e-5;
     if (r < epsilon) {
-        printf("Cancelling acceleration on body, R < epsilon value\n");
         return (two_d_vector){0.0, 0.0};
     }
 
-    // this does: -(u')/(r * r * r) * R
-    // where u' = (m1/m1+m2)^3 * u
+    // Gravitational parameter μ = G * (m1 + m2)
     double u = standard_gravitational_parameter(mass_self, mass_other);
 
-    double temp = (1 / (r * r * r));
+    // Scale factor for acceleration relative to self mass fraction cubed:
+    double mm = mass_self / (mass_self + mass_other);
+    double u_tick = (mm * mm * mm) * u;
 
-    two_d_vector ddx = scale_vec2(x, temp); 
-    ddx = scale_vec2(x, (-1 * u));
-    return ddx;
+    // Acceleration vector: -(u') / r^3 * r_vec
+    // NOTE this is supposed to be negative??? but was reversing my orbits so idk
+    double scale = (1) * (u_tick) / (r * r * r);
+
+    two_d_vector acceleration = scale_vec2(r_vec, scale);
+
+    return acceleration;
 }
 
 // Fourth-Order Runge-Kutta algorithm
@@ -223,14 +223,27 @@ void runge_kutta(double t, double h, double m, two_d_body *b){
 void cog_ref_runge_kutta(double t, double h, two_d_body *body1, two_d_body *body2){
 
     // pos, vel, and mass of b1
-    two_d_vector x1 = body1->pos;
-    two_d_vector v1 = body1->velocity; 
+    two_d_vector x1_init = body1->pos;
+    two_d_vector v1_init = body1->velocity; 
     double m1 =  body1->mass;
 
     // pos, vel, and mass of b2
-    two_d_vector x2 = body2->pos;
-    two_d_vector v2 = body2->velocity; 
+    two_d_vector x2_init = body2->pos;
+    two_d_vector v2_init = body2->velocity; 
     double m2 =  body2->mass;
+
+
+    //frame conversion
+    two_d_vector v_com = {
+    (m1 * v1_init.x + m2 * v2_init.x) / (m1 + m2),
+    (m1 * v1_init.y + m2 * v2_init.y) / (m1 + m2)
+    };
+    two_d_vector com = find_cog(m1, x1_init, m2, x2_init);
+    two_d_vector x1 = { x1_init.x - com.x, x1_init.y - com.y };
+    two_d_vector x2 = { x2_init.x - com.x, x2_init.y - com.y };
+
+    two_d_vector v1 = { v1_init.x - v_com.x, v1_init.y - v_com.y };
+    two_d_vector v2 = { v2_init.x - v_com.x, v2_init.y - v_com.y };
 
     //rk4 steps
 
