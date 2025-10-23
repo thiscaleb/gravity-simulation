@@ -123,14 +123,6 @@ int render( two_d_body* body1,  two_d_body* body2, int REF_FRAME_CODE, bool DEBU
     }
 
 
-    //for the COG frame, offset the positions relative to the COM
-    if(REF_FRAME_CODE == 101){ 
-        two_d_vector com = find_cog(body1->mass, body1->pos, body2->mass, body2->pos);
-        body1->pos.x -= com.x;
-        body1->pos.y -= com.y;
-        body2->pos.x -= com.x;
-        body2->pos.y -= com.y;
-    }
     // Render loop
     // -1 is defined as the infinite run condition
    while (!glfwWindowShouldClose(window) && (RUN_LIMIT == -1 || run <= RUN_LIMIT)) {
@@ -160,7 +152,7 @@ int render( two_d_body* body1,  two_d_body* body2, int REF_FRAME_CODE, bool DEBU
             rk4_equation_of_motion(body1, body2, 5000.0f);
 
         }else if(REF_FRAME_CODE == 101){
-           rk4_relative_equation_of_motion(body1, body2, 5000.0f);
+           rk4_relative_equation_of_motion(body1, body2, 15000.0f);
 
         }else if(REF_FRAME_CODE == 102){
             relative_equation_of_motion(body1, body2, 5000.0f);

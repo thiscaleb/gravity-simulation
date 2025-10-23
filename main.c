@@ -70,21 +70,21 @@ int main(int argc, char **argv){
     two_d_body *body2 = ( two_d_body*) malloc(sizeof( two_d_body)*2);
 
     body1->mass = mass_sun;
-    body2->mass =  mass_earth;
+    body2->mass =  mass_sun / 2;
 
     //E3 to convert from KM to M
     // ORANGE IN SIM
     body1->pos.x = 0;
     body1->pos.y = 0;
-    body1->velocity.x = 8E3;
-    body1->velocity.y = 5E2;
+    body1->velocity.x = 5E3;
+    body1->velocity.y = 3;
     body1->radius = 695700E3;
 
     //BLUE IN SIM
-    body2->pos.x = AU;
-    body2->pos.y = -AU;
+    body2->pos.x = AU * 0.5;
+    body2->pos.y = -AU * 0.5;
     body2->velocity.x = -2E3;
-    body2->velocity.y = 15E3;
+    body2->velocity.y = 20E3;
     body2->radius = 695700E3;
 
     if(scharzchild_radius(body1->mass) > body1->radius){
