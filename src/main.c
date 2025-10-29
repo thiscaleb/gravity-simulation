@@ -6,6 +6,7 @@
 #include "utils/structures.h"
 #include "physics/gravity.h"
 #include "math/math_funcs.h"
+#include "physics/cr3bp.h"
 
 //Take the string argument for render_mode. Validate that it is correct
 // Return an int code to make it easier to work with
@@ -73,11 +74,11 @@ int main(int argc, char **argv){
 
 
 
-    two_d_body *body1 = ( two_d_body*) malloc(sizeof( two_d_body)*2);
+    two_d_body *body1 = ( two_d_body*) malloc(sizeof( two_d_body));
 
-    two_d_body *body2 = ( two_d_body*) malloc(sizeof( two_d_body)*2);
+    two_d_body *body2 = ( two_d_body*) malloc(sizeof( two_d_body));
 
-    body1->mass = mass_sun * 5;
+    body1->mass = mass_sun * 2;
     body2->mass =  mass_sun;
 
     //E3 to convert from KM to M
@@ -92,8 +93,22 @@ int main(int argc, char **argv){
     body2->pos.x = AU * 0.5;
     body2->pos.y = -AU * 0.5;
     body2->velocity.x = 2E3;
-    body2->velocity.y = 45E3;
+    body2->velocity.y = 5E3;
     body2->radius = 695700E3;
+
+    two_d_body *t = ( two_d_body*) malloc(sizeof(two_d_body));
+    t->mass = 500;
+    t->pos.x = 0;
+    t->pos.y = 0;
+    t->velocity.x = 2E3;
+    t->velocity.y = 1E3;
+    t->radius = 695700;
+
+    if (!body1 || !body2 || !t) {
+        printf("Failed to allocate memory");
+        exit(1);
+    }
+
 
     if(scharzchild_radius(body1->mass) > body1->radius){
         printf("Body is a black hole");
@@ -102,9 +117,12 @@ int main(int argc, char **argv){
     }
 
 
+    for(int i=0; i < 100; i++){
+            solve_cr3bp(body1, body2, t);
+    }
     //printf("Scharzchild Radius %lfm", scharzchild_radius(mass_earth));
 
-    render(body1, body2, REF_FRAME_CODE, TIME_DELTA, DEBUG);
+    // render(body1, body2, REF_FRAME_CODE, TIME_DELTA, DEBUG);
 
     // body2->pos.x = 8000E3;
     // body2->pos.y = 6000E3;

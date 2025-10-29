@@ -53,13 +53,12 @@ vector2 f_v_inertial(double t,vector2 self_pos, vector2 other_pos, double mass_o
     // these are two position vectors
     vector2 x = self_pos;
     vector2 y = other_pos;
-    // TODO: Add some vector funcs here to clean this up
-    double r = sqrt(((y.x -x.x)*(y.x - x.x)) + ((y.y - x.y)*(y.y - x.y)));
+    double r = vec2_distance_between(x,y);
 
     // this does: G * m1 * (x1 - x2)/(r * r * r)
     vector2 ddx = scale_vec2(subtract_vec2s(y,x), G*mass_other); 
     ddx = scale_vec2(ddx, 1 / (r * r * r));
-    return ddx;
+    return ddx; 
 }
 
 
