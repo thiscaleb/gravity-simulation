@@ -6,6 +6,8 @@
 
 vector2 find_cog(double m1,  vector2 pos1, double m2,  vector2 pos2);
 
+double standard_gravitational_parameter(double m1, double m2);
+
 // normalize values to something that opengl can render
 float normalize(double value, double min, double max);
 
