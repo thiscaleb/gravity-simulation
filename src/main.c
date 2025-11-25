@@ -87,7 +87,7 @@ int main(int argc, char **argv){
     }
 
     // Create the NUM_BODIES array
-    two_d_body* bodies_array[NUM_BODIES];
+    body_2d* bodies_array[NUM_BODIES];
 
     // Parse the config file (init.yaml)
     // Maybe I should make the option to pick this filename

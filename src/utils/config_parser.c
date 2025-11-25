@@ -8,7 +8,7 @@
 
 // This func parses the config file init.yaml which contains the initial conditions of the sim 
 // Currently it works-ish, but isn't very robust, and def needs work
-void parse_config_file(two_d_body* bodies_array[], int NUM_BODIES){
+void parse_config_file(body_2d* bodies_array[], int NUM_BODIES){
     //https://www.wpsoftware.net/andrew/pages/libyaml.html
     FILE *fh = fopen("init.yaml", "r");
     yaml_parser_t parser;
@@ -38,13 +38,6 @@ void parse_config_file(two_d_body* bodies_array[], int NUM_BODIES){
         switch(event.type)
         {
         case YAML_NO_EVENT: puts("No event!"); break;
-        // case YAML_STREAM_START_EVENT: puts("STREAM START"); break;
-        // case YAML_STREAM_END_EVENT:   puts("STREAM END");   break;
-        // case YAML_DOCUMENT_START_EVENT: puts("<b>Start Document</b>"); break;
-        // case YAML_DOCUMENT_END_EVENT:   puts("<b>End Document</b>");   break;
-        // case YAML_SEQUENCE_START_EVENT: puts("<b>Start Sequence</b>"); break;
-        // case YAML_SEQUENCE_END_EVENT:   puts("<b>End Sequence</b>");   break;
-        // case YAML_MAPPING_START_EVENT:  puts("<b>Start Mapping</b>");  break;
         case YAML_MAPPING_END_EVENT: NUM_BODIES_YAML++; break;
 
         // This is where the key/value pairs are
@@ -54,7 +47,7 @@ void parse_config_file(two_d_body* bodies_array[], int NUM_BODIES){
 
                 if(strcmp((const char*)event.data.scalar.value, "Name") == 0){
                     
-                    two_d_body *body = ( two_d_body*) malloc(sizeof( two_d_body));
+                    body_2d *body = ( body_2d*) malloc(sizeof( body_2d));
                     if(body == NULL){
                         printf("Failed to allocate memory for body...\n");
                         exit(1);

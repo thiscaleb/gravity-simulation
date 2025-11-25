@@ -1,0 +1,6 @@
+#version 460 core
+
+out vec4 frag_colour;
+void main() {
+  frag_colour = vec4( 0.5, 0.2, 0.6, 1.0 );
+}

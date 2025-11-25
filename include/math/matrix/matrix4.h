@@ -2,6 +2,8 @@
 #define MATRIX4_H
 
 //4x4 matrix represented as a 2d array
-typedef matrix4 = double[4][4];
+typedef float matrix4 [4][4];
+
+float* getIdentityMatrix();
 
 #endif

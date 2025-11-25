@@ -12,6 +12,15 @@ Using the equations from [here](https://orbital-mechanics.space) as a guide.
 
 ## Guide
 
+### Dependencies
+
+```
+sudo apt install libglfw3-dev libyaml-dev
+```
+
+
+### CLI Flags
+
 | Flag | Function                                      | Arguments               |
 |------|-----------------------------------------------|-------------------------|
 | -m   | Set the frame of reference for the simulation | inertial, relative, cog,  cr3bp, n-body|                                                             

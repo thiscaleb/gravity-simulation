@@ -12,9 +12,9 @@ double standard_gravitational_parameter(double m1, double m2);
 float normalize(double value, double min, double max);
 
 //RK4 Implementations
-void cog_ref_runge_kutta(double t, double h, two_d_body *body1, two_d_body *body2);
-void runge_kutta(double t, double h, double m, two_d_body *b);
-void coint_runge_kutta(double t, double h, two_d_body *body1, two_d_body *body2);
-void rk4_nbody(double t, double h, two_d_body* bodies[], int NUM_BODIES);
+void cog_ref_runge_kutta(double t, double h, body_2d *body1, body_2d *body2);
+void runge_kutta(double t, double h, double m, body_2d *b);
+void coint_runge_kutta(double t, double h, body_2d *body1, body_2d *body2);
+void rk4_nbody(double t, double h, body_2d* bodies[], int NUM_BODIES);
 
 #endif
