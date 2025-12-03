@@ -8,15 +8,13 @@
 #include "math/vector/vector3.h"
 #include <assert.h>
 
-GLuint vao, vbo, ebo;
-
-
 // Function to draw a circle at (cx, cy) with radius 
-float* drawTestCircle(vector3 c, float r, int num_segments) {
+void drawTestCircle(vector3 c, float r, int num_segments) {
 
     // Center of circle
     float cx = c.x;
     float cy = c.y;
+    float cz = c.z;
 
     int num_vertices = num_segments * 3;
 
@@ -31,13 +29,121 @@ float* drawTestCircle(vector3 c, float r, int num_segments) {
 
         vertices[idx] = x;
         vertices[idx+1] = y;
-        vertices[idx+2] = 0.0;
+        vertices[idx+2] = cz;
 
         idx += 3;
 
     }
 
-    return vertices;
+    GLuint vbo = 0;
+    glGenBuffers( 1, &vbo );
+    glBindBuffer( GL_ARRAY_BUFFER, vbo );
+    glBufferData( GL_ARRAY_BUFFER, (num_segments+1) * 3* sizeof( float ), vertices, GL_STATIC_DRAW );
+
+    GLuint vao = 0;
+    glGenVertexArrays( 1, &vao );
+    glBindVertexArray( vao );
+    glEnableVertexAttribArray( 0 );
+    glBindBuffer( GL_ARRAY_BUFFER, vbo );
+    glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 0, NULL );
+
+    glDrawArrays(GL_TRIANGLE_FAN, 0, num_segments + 1);
+
+
+}
+
+void drawTestSphere(vector3 c, float r, int num_segments) {
+
+    // Center of circle
+    float cx = c.x;
+    float cy = c.y;
+    float cz = c.z;
+
+    int idx = 0;
+
+    // lazy memory managements
+    vector3 *vertices = malloc(1000000000);
+    
+    for (float i = 0.0f; i <= num_segments; i++) {
+
+        float theta = 3.141592f * (i / num_segments);
+        float theta1 = 3.141592f * ((i+1) / num_segments);
+
+        for(float j = 0.0f; j <= num_segments; j++){
+
+            float phi = 2.0f * 3.1415926535f * (j / num_segments);
+            float phi1 = 2.0f * 3.141592f * ((j+1) / num_segments);
+
+
+            float x1 = cx + (sinf(theta) * cosf(phi) * r);
+            float y1 = cy + (sinf(theta) * sinf(phi) * r);
+            float z1 = cz + (cosf(theta) * r);
+
+            float x2 = cx + (sinf(theta1) * cosf(phi) * r);
+            float y2 = cy + (sinf(theta1) * sinf(phi) * r);
+            float z2 = cz + (cosf(theta1) * r);
+
+            float x3 = cx + (sinf(theta) * cosf(phi1) * r);
+            float y3 = cy + (sinf(theta) * sinf(phi1) * r);
+            float z3 = cz + (cosf(theta) * r);
+
+            float x4 = cx + (sinf(theta1) * cosf(phi1) * r);
+            float y4 = cy + (sinf(theta1) * sinf(phi1) * r);
+            float z4 = cz + (cosf(theta1) * r);
+
+
+            vector3 p1 = {x1, y1, z1};
+            vector3 p2 = {x2, y2, z2};
+            vector3 p3 = {x3, y3, z3};
+            vector3 p4 = {x4, y4, z4};
+
+
+            //normals for the mesh
+            vector3 p12 = subtract_vec3s(p2, p1);
+            vector3 p13 = subtract_vec3s(p3, p1);
+
+            vector3 n1 = cross_product(p12, p13);
+
+            // triangle 1
+            vertices[idx++] = p1;
+            vertices[idx++] = n1;
+
+            vertices[idx++] = p2;
+            vertices[idx++] = n1;
+
+            vertices[idx++] = p3;
+            vertices[idx++] = n1;
+
+            // triangle 2
+            vertices[idx++] = p3;
+            vertices[idx++] = n1;
+
+            vertices[idx++] = p4;
+            vertices[idx++] = n1;
+
+            vertices[idx++] = p2;
+            vertices[idx++] = n1;
+
+        }
+
+    }
+
+    GLuint vbo = 0;
+    glGenBuffers( 1, &vbo );
+    glBindBuffer( GL_ARRAY_BUFFER, vbo );
+    glBufferData(GL_ARRAY_BUFFER, idx * sizeof(vector3), vertices, GL_STATIC_DRAW);
+
+    GLuint vao = 0;
+    glGenVertexArrays( 1, &vao );
+    glBindVertexArray( vao );
+    glEnableVertexAttribArray( 0 );
+    glVertexAttribPointer( 0, 3, GL_DOUBLE, GL_FALSE, 2* sizeof(vector3), (void*)0 );
+
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer( 1, 3, GL_DOUBLE, GL_FALSE, 2* sizeof(vector3), (void*)sizeof(vector3) );
+
+    glDrawArrays(GL_TRIANGLES, 0, idx/2);
+
 
 }
 
@@ -84,22 +190,11 @@ int main() {
 //   -0.5f,  0.5f,  0.0f,  
 // };
 
-vector3 center = {0.0f,0.0f, 0.0f};
-int num_segments = 50;
-float* points = drawTestCircle(center, 0.2, num_segments);
+vector3 center = {0.0f,0.0f, 9.0f};
+int num_segments = 110;
 
+vector3 center2 = {0.2f, 0.4f, -5.0f};
 
-GLuint vbo = 0;
-glGenBuffers( 1, &vbo );
-glBindBuffer( GL_ARRAY_BUFFER, vbo );
-glBufferData( GL_ARRAY_BUFFER, num_segments * 3* sizeof( float ), points, GL_STATIC_DRAW );
-
-GLuint vao = 0;
-glGenVertexArrays( 1, &vao );
-glBindVertexArray( vao );
-glEnableVertexAttribArray( 0 );
-glBindBuffer( GL_ARRAY_BUFFER, vbo );
-glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 0, NULL );
 
 // yes I know it's hardcoded.... I don't care
 const char* fpath = "shaders/test.vert";
@@ -122,10 +217,12 @@ glAttachShader( shader_program, vs );
 glLinkProgram( shader_program );
 
 
-glClearColor(0.6f, 0.6f, 0.8f, 1.0f);
+glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 double prev_s = glfwGetTime();  // Set the initial 'previous time'.
 double title_countdown_s = 0.1;
+
+float angle_deg = 0.0f;
 
 while ( !glfwWindowShouldClose( window ) ) {
     double curr_s = glfwGetTime(); // Get the current time. 
@@ -145,26 +242,89 @@ while ( !glfwWindowShouldClose( window ) ) {
 		title_countdown_s = 0.1;
 	}
 
-
-    int time_loc = glGetUniformLocation( shader_program, "time" );
-    assert( time_loc > -1 ); // NB. include assert.h for assert().
-
     // Update window events.
     glfwPollEvents();
     
     // Wipe the drawing surface clear.
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-    // Put the shader program, and the VAO, in focus in OpenGL's state machine.
+        // Put the shader program, and the VAO, in focus in OpenGL's state machine.
     glUseProgram( shader_program );
-    glUniform1f( time_loc, (float)curr_s);
-    glBindVertexArray( vao );
 
-    // Draw points 0-3 from the currently bound VAO with current in-use shader.
-    glDrawArrays(GL_TRIANGLE_FAN, 0, num_segments);
-    //   glDrawArrays( GL_TRIANGLE_STRIP, 0, 4 );
+    float angle = angle_deg * 3.14159f / 180.0f;
+    float c = cos(angle);
+    float s = sin(angle);
 
-        // Put the stuff we've been drawing onto the visible area.
+    float view[16] = {
+        1,  0, 0, 0,
+        0,  1,  0, 0,
+        0,  0,  1, 0,
+        0,  0, -10, 1   
+    };
+
+    //increment angle deg
+    angle_deg = angle_deg + 0.5f;
+
+    float fov = 60.0f * 3.14159f / 180.0f;
+    float aspect = 1600.0f / 900.0f;
+    float near = 0.1f;
+    float far = 1000.0f;
+
+    float f = 1.0f / tanf(fov / 2.0f);
+
+    float projection[16] = {
+        f/aspect, 0, 0,  0,
+        0, f, 0,  0,
+        0, 0, (far+near)/(near-far), -1,
+        0, 0, (2*far*near)/(near-far), 0
+    };
+
+    GLuint projLoc = glGetUniformLocation(shader_program, "projection");
+    glUseProgram(shader_program);
+    glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
+
+    GLuint viewLoc = glGetUniformLocation(shader_program, "view");
+    glUseProgram(shader_program);
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view);
+
+    float model[16] = {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    };
+
+    glUseProgram( shader_program );
+    GLuint modelLoc = glGetUniformLocation(shader_program, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, (const GLfloat *)model);
+
+    // set lightpos
+    GLuint lightPos = glGetUniformLocation(shader_program, "lightPos");
+    glUniform3f(lightPos, 0.0f, 0.0f, -5.0f);
+
+
+    float lightModel[16] = {
+        c,  0, -s, 0,
+        0,  1,  0, 0,
+        s,  0,  c, 0,
+        0,  0, -10, 1 
+    };
+
+    GLuint lightModelLoc = glGetUniformLocation(shader_program, "lightModel");
+    glUniformMatrix4fv(lightModelLoc, 1, GL_FALSE, (const GLfloat *)lightModel);
+
+    //set color of frag
+    GLuint lightColorLoc = glGetUniformLocation(shader_program, "lightColor");
+    GLuint objectColorLoc = glGetUniformLocation(shader_program, "objectColor");
+    glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
+    glUniform3f(objectColorLoc, 1.0f, 0.5f, 0.31f);
+
+    drawTestSphere(center2, 0.5, num_segments);
+
+    glUniform3f(objectColorLoc, 0.3f, 0.3f, 0.3f);
+    drawTestSphere(center, 0.1, num_segments);
+
+    // Put the stuff we've been drawing onto the visible area.
     glfwSwapBuffers( window );
     }
 

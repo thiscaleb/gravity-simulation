@@ -1,4 +1,4 @@
-#include "utils/structures"
+#include "utils/structures.h"
 
 // normalize a vec3 to something that opengl can render
 vector3 normalize_vec3(vector3 vec, double min, double max){
@@ -8,7 +8,8 @@ vector3 normalize_vec3(vector3 vec, double min, double max){
 
 // Scale up a vector vec by s
 vector3 scale_vec3(vector3 vec, double s){
-    return vector3 scaled = {vec.x * s, vec.y * s, vec.z * s};
+    vector3 scaled = {vec.x * s, vec.y * s, vec.z * s};
+    return scaled;
 }
 
 // Add two vectors and return their sum
@@ -27,7 +28,7 @@ vector3 subtract_vec3s(vector3 vec1, vector3 vec2){
 //a1b1 + a2b2 + a3b3
 double dot_vec3s(vector3 vec1, vector3 vec2){
     double product = { (vec1.x * vec2.x) + (vec1.y * vec2.y) + (vec1.z * vec2.z)};
-    return double;
+    return product;
 }
 
 //cross product!

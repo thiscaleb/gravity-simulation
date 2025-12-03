@@ -60,11 +60,7 @@ float* drawCircle(vector2 c, float r, int num_segments) {
 }
 
 void initBodies(body_2d* bodies_array[], int NUM_BODIES){
-
-    //used for normalization
-    double min = -1.5 * AU;
-    double max = 1.5 * AU;   
-
+  
     for(int i=0; i < NUM_BODIES ;i++){
 
         body_2d* b = bodies_array[i];
@@ -76,10 +72,10 @@ void initBodies(body_2d* bodies_array[], int NUM_BODIES){
         glGenBuffers( 1, &b->vbo );
         glGenVertexArrays( 1, &b->vao );
 
-        vector2 coords = normalize_vec2(b->pos,min,max);
+        vector2 coords = normalize_vec2(b->pos,SPACE_MIN,SPACE_MAX);
 
         int num_segments = 30; // How many segments in da circles
-        float* points = drawCircle(coords, normalize(b->radius,min,max), num_segments);
+        float* points = drawCircle(coords, normalize(b->radius,SPACE_MIN,SPACE_MAX), num_segments);
 
         glBindBuffer( GL_ARRAY_BUFFER, b->vbo );
         glBufferData( GL_ARRAY_BUFFER, num_segments * 3 * sizeof( float ), points, GL_STATIC_DRAW );
@@ -95,6 +91,7 @@ void initBodies(body_2d* bodies_array[], int NUM_BODIES){
 
 void initOrbit(points_list* orbit){
 
+    //this can overflow
     int ORBIT_LIMIT = 10000;
     
     glGenBuffers( 1, &orbit->vbo );
@@ -114,6 +111,7 @@ void initOrbit(points_list* orbit){
 
 void updateOrbits(points_list* orbit, vector3 coords){
 
+    //this can overflow
     int ORBIT_LIMIT = 10000;
 
     point *new_point = ( point * )malloc(sizeof(point));
@@ -194,6 +192,28 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float TIME_DELTA, int NU
     glAttachShader( shader_program, vs );
     glLinkProgram( shader_program );
 
+    // The orbit shaders
+    // I should maybe tuck this into a function eventually
+    const char* orbit_frag = "shaders/orbit.frag";
+    char* orbit_frag_shader = parse_shader_file(orbit_frag);
+
+    const char* orbit_vertex = "shaders/orbit.vert";
+    char* orbit_vert_shader = parse_shader_file(orbit_vertex);
+
+    GLuint orbit_vs = glCreateShader( GL_VERTEX_SHADER );
+    glShaderSource( orbit_vs, 1, (const GLchar**)&orbit_vert_shader, NULL );
+    glCompileShader( orbit_vs );
+
+    GLuint orbit_fs = glCreateShader( GL_FRAGMENT_SHADER );
+    glShaderSource( orbit_fs, 1, (const GLchar**)&orbit_frag_shader, NULL );
+    glCompileShader( orbit_fs );
+
+    GLuint orbit_shader = glCreateProgram();
+    glAttachShader( orbit_shader, orbit_fs );
+    glAttachShader( orbit_shader, orbit_vs );
+    glLinkProgram( orbit_shader );
+
+
     //Projection Matrix
     // This should be useful for 3D (when we get there!)
     float left = -1.0f, right = 1.0f;
@@ -207,13 +227,15 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float TIME_DELTA, int NU
         -(right+left)/(right-left), -(top+bottom)/(top-bottom), -(farPlane+nearPlane)/(farPlane-nearPlane), 1.0f 
     };
 
+    // for bodies
     GLuint projLoc = glGetUniformLocation(shader_program, "projection");
     glUseProgram(shader_program);
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
 
-    //View Matrix (just an identity for now)
-    GLuint viewLoc = glGetUniformLocation(shader_program, "view");
-    glUseProgram(shader_program);
+    //for orbits
+    GLuint projLoc2 = glGetUniformLocation(orbit_shader, "projection");
+    glUseProgram(orbit_shader);
+    glUniformMatrix4fv(projLoc2, 1, GL_FALSE, projection);
 
     float m[] = {
         1.0f, 0.0f, 0.0f, 0.0f,
@@ -221,7 +243,16 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float TIME_DELTA, int NU
         0.0f, 0.0f, 1.0f, 0.0f,
         0.0f, 0.0f, 0.0f, 1.0f
     };
+
+    //View Matrix (just an identity for now)
+    GLuint viewLoc = glGetUniformLocation(shader_program, "view");
+    glUseProgram(shader_program);
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, m);
+
+    //for orbits
+    GLuint viewLoc2 = glGetUniformLocation(orbit_shader, "view");
+    glUseProgram(orbit_shader);
+    glUniformMatrix4fv(viewLoc2, 1, GL_FALSE, m);
 
     // used to measure frametime
     double lastTime = glfwGetTime();
@@ -303,25 +334,31 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float TIME_DELTA, int NU
         
         // Wipe the drawing surface clear.
         glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
         // Put the shader program, and the VAO, in focus in OpenGL's state machine.
-        glUseProgram( shader_program );
-
-        //used for normalization
-        double min = -1.5 * AU;
-        double max = 1.5 * AU;  
+        glUseProgram( shader_program ); 
 
         // Iterate through all bodies and get their VAOs
         for(int i=0;i<NUM_BODIES;i++){ 
 
-            int modelLocation = glGetUniformLocation(shader_program, "model");
+            
+            int modelLocationBody = glGetUniformLocation(shader_program, "model");
+            int modelLocationOrbit = glGetUniformLocation(orbit_shader, "model");
+
+            if (modelLocationOrbit == -1){
+                printf("failed to get model from orbit shader");
+            }
 
             // orbits updating
             // use a vector3 for future-proofing, but set z to 0.0f cause its 2d
 
-            //Completely arbitrary number I made up to not tank framerate with the orbit lines
-            if(run % 500 == 0){
-                vector2 coord_pos = normalize_vec2(bodies_array[i]->pos, min, max);
+            // Completely arbitrary number I made up to not tank framerate with the orbit lines
+            // This variable is probably poorly named, but it essentially puts a line in the orbit path once every N frames
+            // where N is the ORBIT_SAMPLING var
+            int ORBIT_SAMPLING = 500;
+            if(run % ORBIT_SAMPLING == 0){
+                vector2 coord_pos = normalize_vec2(bodies_array[i]->pos, SPACE_MIN, SPACE_MAX);
                 vector3 coord = {coord_pos.x, coord_pos.y, 0.0f};
                 updateOrbits(bodies_array[i]->orbit, coord);
 
@@ -332,14 +369,15 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float TIME_DELTA, int NU
                 {0.0, 0.0, 1.0, 0.0},
                 {0.0, 0.0, 0.0, 1.0}
             };
-            glUniformMatrix4fv(modelLocation, 1, GL_TRUE, (const GLfloat *)identity);
+
+            glUseProgram( orbit_shader );
+            glUniformMatrix4fv(modelLocationOrbit, 1, GL_TRUE, (const GLfloat *)identity);
             drawOrbit(bodies_array[i]->orbit);
             
 
-
             // So these transformations use relative coords, so I'm storing the init positions then just subtracting from current
             // This way I don't have the re-write VBOs and its faster, but it feels...ugly
-            vector2 n_pos = normalize_vec2(subtract_vec2s(bodies_array[i]->pos,init_bodies_pos[i]), min, max);
+            vector2 n_pos = normalize_vec2(subtract_vec2s(bodies_array[i]->pos,init_bodies_pos[i]), SPACE_MIN, SPACE_MAX);
 
             matrix4 m = {
                 {1.0, 0.0, 0.0, n_pos.x},
@@ -348,7 +386,8 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float TIME_DELTA, int NU
                 {0.0, 0.0, 0.0, 1.0}
             };
 
-            glUniformMatrix4fv(modelLocation, 1, GL_TRUE, (const GLfloat *)m);
+            glUseProgram( shader_program );
+            glUniformMatrix4fv(modelLocationBody, 1, GL_TRUE, (const GLfloat *)m);
             glBindVertexArray( bodies_array[i]->vao );
             glDrawArrays(GL_TRIANGLE_FAN, 0, 30);
         }

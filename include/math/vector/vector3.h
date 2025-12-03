@@ -7,6 +7,7 @@ typedef struct
     double x; 
     double y;
     double z;
+
 } vector3;
 
 // normalize a two_d_vectpr to something that opengl can render
@@ -22,5 +23,7 @@ vector3 add_vec3s(vector3 vec1, vector3 vec2);
 vector3 subtract_vec3s(vector3 vec1, vector3 vec2);
 
 double dot_vec3s(vector3 vec1, vector3 vec2);
+
+vector3 cross_product(vector3 vec1, vector3 vec2);
 
 #endif
