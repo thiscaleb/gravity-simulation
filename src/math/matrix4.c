@@ -1,17 +1,10 @@
-#include "math/matrix/matrix4.h"
 #include <math.h>
 
 
-// float* getIdentityMatrix(){
+const float identityMatrix4[16] = {
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0,
 
-//     float m[] = {
-//         1.0f, 0.0f, 0.0f, 0.0f,
-//         0.0f, 1.0f, 0.0f, 0.0f,
-//         0.0f, 0.0f, 1.0f, 0.0f,
-//         0.0f, 0.0f, 0.0f, 1.0f
-//     };
-
-//     return m;
-
-// }
-
+};

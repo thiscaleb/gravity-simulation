@@ -8,11 +8,15 @@ Using the equations from [here](https://orbital-mechanics.space) as a guide.
 - Create embedding diagram with Flamm's Parabloid
 - Black Holes? Raytracing?
 - Make the orbit trails configurable
+- Add textures?
+- Make the bodies spin? (would need textures)
 
 
 ## Guide
 
 ### Dependencies
+
+- OpenGL 4.6
 
 ```
 sudo apt install libglfw3-dev libyaml-dev

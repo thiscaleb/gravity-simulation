@@ -104,8 +104,7 @@ void initOrbit(points_list* orbit){
                  NULL, GL_DYNAMIC_DRAW);
 
     // Consider a way to use GL_FLOAT to speed this up
-    glVertexAttribPointer(0, 3, GL_DOUBLE, GL_FALSE, sizeof(vector3), (void*)0);
-
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(vector3), (void*)0);
     glEnableVertexAttribArray(0);
 }
 
@@ -126,6 +125,7 @@ void updateOrbits(points_list* orbit, vector3 coords){
         return;
     }
 
+    glEnableVertexAttribArray(0);
     glBindBuffer(GL_ARRAY_BUFFER, orbit->vbo);
     // Add data to the VBO
     glBufferSubData(GL_ARRAY_BUFFER, sizeof(vector3) * (orbit->count - 1), sizeof(vector3), &new_point->pos);
@@ -258,9 +258,8 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float TIME_DELTA, int NU
     double lastTime = glfwGetTime();
     int nbFrames = 0;
     int run = 0;  
-    double title_countdown_s = 1.0;
 
-    //init the bodies herre
+    //init the bodies here
     initBodies(bodies_array, NUM_BODIES);
 
     // Setup the title
@@ -342,7 +341,8 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float TIME_DELTA, int NU
         // Iterate through all bodies and get their VAOs
         for(int i=0;i<NUM_BODIES;i++){ 
 
-            
+            body_2d* b = bodies_array[i];
+
             int modelLocationBody = glGetUniformLocation(shader_program, "model");
             int modelLocationOrbit = glGetUniformLocation(orbit_shader, "model");
 
@@ -358,9 +358,9 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float TIME_DELTA, int NU
             // where N is the ORBIT_SAMPLING var
             int ORBIT_SAMPLING = 500;
             if(run % ORBIT_SAMPLING == 0){
-                vector2 coord_pos = normalize_vec2(bodies_array[i]->pos, SPACE_MIN, SPACE_MAX);
+                vector2 coord_pos = normalize_vec2(b->pos, SPACE_MIN, SPACE_MAX);
                 vector3 coord = {coord_pos.x, coord_pos.y, 0.0f};
-                updateOrbits(bodies_array[i]->orbit, coord);
+                updateOrbits(b->orbit, coord);
 
             }
             matrix4 identity = {
@@ -372,12 +372,12 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float TIME_DELTA, int NU
 
             glUseProgram( orbit_shader );
             glUniformMatrix4fv(modelLocationOrbit, 1, GL_TRUE, (const GLfloat *)identity);
-            drawOrbit(bodies_array[i]->orbit);
+            drawOrbit(b->orbit);
             
 
             // So these transformations use relative coords, so I'm storing the init positions then just subtracting from current
             // This way I don't have the re-write VBOs and its faster, but it feels...ugly
-            vector2 n_pos = normalize_vec2(subtract_vec2s(bodies_array[i]->pos,init_bodies_pos[i]), SPACE_MIN, SPACE_MAX);
+            vector2 n_pos = normalize_vec2(subtract_vec2s(b->pos,init_bodies_pos[i]), SPACE_MIN, SPACE_MAX);
 
             matrix4 m = {
                 {1.0, 0.0, 0.0, n_pos.x},
@@ -388,11 +388,16 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float TIME_DELTA, int NU
 
             glUseProgram( shader_program );
             glUniformMatrix4fv(modelLocationBody, 1, GL_TRUE, (const GLfloat *)m);
+
+            //get the color
+            int objectColorLoc = glGetUniformLocation(shader_program, "objectColor");
+            glUniform3f(objectColorLoc, b->color.r, b->color.g, b->color.b);
+
             glBindVertexArray( bodies_array[i]->vao );
             glDrawArrays(GL_TRIANGLE_FAN, 0, 30);
         }
         
-        glfwSwapBuffers( window );
+        glfwSwapBuffers( window);
         
         run++;
     }

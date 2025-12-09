@@ -6,4 +6,6 @@ typedef float matrix4 [4][4];
 
 float* getIdentityMatrix();
 
+extern const float identityMatrix4[16];
+
 #endif

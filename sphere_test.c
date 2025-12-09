@@ -8,6 +8,19 @@
 #include "math/vector/vector3.h"
 #include <assert.h>
 
+
+typedef struct sphere{
+    vector3 pos;
+    float radius;
+    int num_segments;
+    GLuint vbo;
+    GLuint vao;
+} sphere;
+
+typedef struct camera{
+    vector3 pos;
+} camera;
+
 // Function to draw a circle at (cx, cy) with radius 
 void drawTestCircle(vector3 c, float r, int num_segments) {
 
@@ -52,27 +65,29 @@ void drawTestCircle(vector3 c, float r, int num_segments) {
 
 }
 
-void drawTestSphere(vector3 c, float r, int num_segments) {
+int drawTestSphere(sphere *s) {
 
-    // Center of circle
-    float cx = c.x;
-    float cy = c.y;
-    float cz = c.z;
+    // Center of sphere
+    float cx = s->pos.x;
+    float cy = s->pos.y;
+    float cz = s->pos.z;
 
     int idx = 0;
 
-    // lazy memory managements
-    vector3 *vertices = malloc(1000000000);
+    int n = s->num_segments;
+    float r = s->radius;
+
+    vector3 *vertices = malloc(sizeof(vector3) * (13 * (s->num_segments * s->num_segments)));
     
-    for (float i = 0.0f; i <= num_segments; i++) {
+    for (float i = 0.0f; i <= n ; i++) {
 
-        float theta = 3.141592f * (i / num_segments);
-        float theta1 = 3.141592f * ((i+1) / num_segments);
+        float theta = 3.141592f * (i / n);
+        float theta1 = 3.141592f * ((i+1) / n);
 
-        for(float j = 0.0f; j <= num_segments; j++){
+        for(float j = 0.0f; j <= n; j++){
 
-            float phi = 2.0f * 3.1415926535f * (j / num_segments);
-            float phi1 = 2.0f * 3.141592f * ((j+1) / num_segments);
+            float phi = 2.0f * 3.1415926535f * (j / n);
+            float phi1 = 2.0f * 3.141592f * ((j+1) / n);
 
 
             float x1 = cx + (sinf(theta) * cosf(phi) * r);
@@ -128,22 +143,22 @@ void drawTestSphere(vector3 c, float r, int num_segments) {
 
     }
 
-    GLuint vbo = 0;
-    glGenBuffers( 1, &vbo );
-    glBindBuffer( GL_ARRAY_BUFFER, vbo );
+    glBindBuffer( GL_ARRAY_BUFFER, s->vbo );
     glBufferData(GL_ARRAY_BUFFER, idx * sizeof(vector3), vertices, GL_STATIC_DRAW);
 
-    GLuint vao = 0;
-    glGenVertexArrays( 1, &vao );
-    glBindVertexArray( vao );
+    glBindVertexArray( s->vao );
     glEnableVertexAttribArray( 0 );
     glVertexAttribPointer( 0, 3, GL_DOUBLE, GL_FALSE, 2* sizeof(vector3), (void*)0 );
 
     glEnableVertexAttribArray(1);
+    // this has an offset - it tracks the normals of each mesh
     glVertexAttribPointer( 1, 3, GL_DOUBLE, GL_FALSE, 2* sizeof(vector3), (void*)sizeof(vector3) );
 
-    glDrawArrays(GL_TRIANGLES, 0, idx/2);
+    // glDrawArrays(GL_TRIANGLES, 0, idx/2);
 
+    // free(vertices);
+
+    return vertices;
 
 }
 
@@ -190,10 +205,29 @@ int main() {
 //   -0.5f,  0.5f,  0.0f,  
 // };
 
-vector3 center = {0.0f,0.0f, 9.0f};
-int num_segments = 110;
 
+
+
+
+vector3 center = {0.0f,0.0f, 9.0f};
 vector3 center2 = {0.2f, 0.4f, -5.0f};
+
+sphere *sphere1 = malloc(sizeof(sphere));
+sphere *sphere2 = malloc(sizeof(sphere));
+
+sphere1->pos = center;
+sphere2->pos = center2;
+
+sphere1->num_segments = 60;
+sphere2->num_segments = 60;
+
+sphere1->radius = 0.3f;
+sphere2->radius = 0.2f;
+
+glGenBuffers( 1, &sphere1->vbo );
+glGenVertexArrays( 1, &sphere1->vao );
+glGenBuffers( 1, &sphere2->vbo );
+glGenVertexArrays( 1, &sphere2->vao );
 
 
 // yes I know it's hardcoded.... I don't care
@@ -223,6 +257,17 @@ double prev_s = glfwGetTime();  // Set the initial 'previous time'.
 double title_countdown_s = 0.1;
 
 float angle_deg = 0.0f;
+
+camera *cam = malloc(sizeof(camera));
+
+vector3 camera_pos = {0,0,-10};
+cam->pos = camera_pos;
+
+GLuint objectColorLoc = glGetUniformLocation(shader_program, "objectColor");
+glUniform3f(objectColorLoc, 1.0f, 0.5f, 0.31f);
+int idx = drawTestSphere(sphere1);
+glUniform3f(objectColorLoc, 0.3f, 0.3f, 0.3f);
+drawTestSphere(sphere2);
 
 while ( !glfwWindowShouldClose( window ) ) {
     double curr_s = glfwGetTime(); // Get the current time. 
@@ -255,11 +300,36 @@ while ( !glfwWindowShouldClose( window ) ) {
     float c = cos(angle);
     float s = sin(angle);
 
+    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
+        glfwSetWindowShouldClose(window, true);
+    }
+
+    const float cameraSpeed = 0.0005f; 
+
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
+        cam->pos.z += cameraSpeed; 
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
+        cam->pos.z -= cameraSpeed; 
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
+        cam->pos.x -= cameraSpeed; 
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
+        cam->pos.x += cameraSpeed; 
+    }
+
+
+    float x = cam->pos.x;
+    float y = cam->pos.y;
+    float z = cam->pos.z;
+
     float view[16] = {
         1,  0, 0, 0,
         0,  1,  0, 0,
         0,  0,  1, 0,
-        0,  0, -10, 1   
+        -x, -y, z, 1   
     };
 
     //increment angle deg
@@ -315,14 +385,12 @@ while ( !glfwWindowShouldClose( window ) ) {
 
     //set color of frag
     GLuint lightColorLoc = glGetUniformLocation(shader_program, "lightColor");
-    GLuint objectColorLoc = glGetUniformLocation(shader_program, "objectColor");
     glUniform3f(lightColorLoc, 1.0f, 1.0f, 1.0f);
-    glUniform3f(objectColorLoc, 1.0f, 0.5f, 0.31f);
 
-    drawTestSphere(center2, 0.5, num_segments);
 
-    glUniform3f(objectColorLoc, 0.3f, 0.3f, 0.3f);
-    drawTestSphere(center, 0.1, num_segments);
+    glBindVertexArray( sphere1->vao );
+    glDrawArrays(GL_TRIANGLES, 0, idx/2);
+
 
     // Put the stuff we've been drawing onto the visible area.
     glfwSwapBuffers( window );

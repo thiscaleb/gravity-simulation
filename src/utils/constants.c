@@ -14,5 +14,6 @@ const double mass_sun = 1.9891E30;
 const double mass_sagA = 8.5E36;
 
 //used for normalization
-const double SPACE_MIN = -1.5 * AU * 100;
-const double SPACE_MAX = 1.5 * AU * 100; 
+// should be configurable
+const double SPACE_MIN = -1.5 * AU * 2;
+const double SPACE_MAX = 1.5 * AU * 2; 
