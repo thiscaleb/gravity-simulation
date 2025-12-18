@@ -4,8 +4,6 @@ Using the equations from [here](https://orbital-mechanics.space) as a guide.
 
 ## To Do
 - Add checking if init values make sense for "relative" frame
-- Add 3D Support
-- Create embedding diagram with Flamm's Parabloid
 - Black Holes? Raytracing?
 - Make the orbit trails configurable
 - Add textures?

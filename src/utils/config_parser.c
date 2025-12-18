@@ -263,9 +263,14 @@ void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
                 }
 
                 if(type_next){
-                    // needs to be implemented still
-                    const char* type = (const char*)event.data.scalar.value;
-                    printf("type = %s", type);
+
+                    if(is_3d){
+                        // needs to be implemented still
+                        const char* type = (const char*)event.data.scalar.value;
+                        if(strcmp(type, "Star") == 0 || strcmp(type, "star")){
+                            bodies_array[NUM_BODIES_YAML]->t.as_3d->type = STAR;
+                        }
+                    }
                     type_next = false;
                 }
 

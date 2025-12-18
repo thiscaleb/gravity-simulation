@@ -30,22 +30,22 @@ vector2 find_nbody_cog(body_2d* bodies[], int NUM_BODIES){
 }
 
 // Function to draw a circle at (cx, cy) with radius 
-float* drawCircle(vector2 c, float r, int num_segments) {
+double* drawCircle(vector2 c, float r, int num_segments) {
 
     // Center of circle
-    float cx = c.x;
-    float cy = c.y;
+    double cx = c.x;
+    double cy = c.y;
 
-    int num_vertices = num_segments * 3;
+    int num_vertices = (num_segments+1) * 3;
 
     int idx = 0;
 
-    float *vertices = malloc((num_vertices+1) * sizeof(float));
+    double *vertices = malloc(num_vertices * sizeof(double));
     
     for (int i = 0; i <= num_segments; i++) {
         float angle = 2.0f * PI * i / num_segments;
-        float x = cx + cosf(angle) * r;
-        float y = cy + sinf(angle) * r;
+        double x = cx + cosf(angle) * r;
+        double y = cy + sinf(angle) * r;
 
         vertices[idx] = x;
         vertices[idx+1] = y;
@@ -75,15 +75,15 @@ void initBodies(body_2d* bodies_array[], int NUM_BODIES){
         vector2 coords = normalize_vec2(b->pos,SPACE_MIN,SPACE_MAX);
 
         int num_segments = 30; // How many segments in da circles
-        float* points = drawCircle(coords, normalize(b->radius,SPACE_MIN,SPACE_MAX), num_segments);
+        double* points = drawCircle(coords, normalize(b->radius,0,SPACE_MAX), num_segments);
 
         glBindBuffer( GL_ARRAY_BUFFER, b->vbo );
-        glBufferData( GL_ARRAY_BUFFER, num_segments * 3 * sizeof( float ), points, GL_STATIC_DRAW );
+        glBufferData( GL_ARRAY_BUFFER, num_segments * 3 * sizeof( double ), points, GL_STATIC_DRAW );
 
         glBindVertexArray( b->vao );
         glEnableVertexAttribArray( 0 );
         glBindBuffer( GL_ARRAY_BUFFER, b->vbo );
-        glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 0, NULL );
+        glVertexAttribPointer( 0, 3, GL_DOUBLE, GL_FALSE, 0, NULL );
     
     }
 
@@ -274,6 +274,8 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float TIME_DELTA, int NU
         init_bodies_pos[i] = bodies_array[i]->pos;
     }
 
+   
+            
     // Render loop
     // -1 is defined as the infinite run condition
    while (!glfwWindowShouldClose(window) && (RUN_LIMIT == -1 || run <= RUN_LIMIT)) {
@@ -289,8 +291,8 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float TIME_DELTA, int NU
             printf("\n%f ms/frame", 1000.0/(double)(nbFrames));
             printf("\nRendering With: %s", glGetString(GL_RENDERER));
             for(int i=0;i<NUM_BODIES;i++){
-                printf("\n B%d Velocity = {%lf, %lf}", i, bodies_array[i]->velocity.x, bodies_array[i]->velocity.y);
-                printf("\n B%d Position = {%lf, %lf}", i, bodies_array[i]->pos.x, bodies_array[i]->pos.y);
+                printf("\n B%d Velocity = {%f, %f}", i, bodies_array[i]->velocity.x, bodies_array[i]->velocity.y);
+                printf("\n B%d Position = {%f, %f}", i, bodies_array[i]->pos.x, bodies_array[i]->pos.y);
             }
 
             // FPS Counter
@@ -462,8 +464,3 @@ void rk4_relative_equation_of_motion( body_2d *b1, body_2d *b2, float delta_t){
     }
 }
 
-
-// take the mass (kg) of an object and determine its scharzchild radius
-double scharzchild_radius(double mass){
-    return (2 * G * mass) / (double)(c * c);
-}

@@ -24,10 +24,10 @@ typedef struct body_2d
 {
     double mass; // in kg
     double radius; //in m
+    int resolution; // how many segments to use in circle
     // Each body needs to keep track of its own VBO/VAO to update its rendering
     GLuint vbo;
     GLuint vao;
-    int resolution; // how many segments to use in circle
     rgb color;
     vector2 pos;
     vector2 velocity;

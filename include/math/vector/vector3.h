@@ -14,6 +14,7 @@ typedef struct
 
 // normalize a two_d_vectpr to something that opengl can render
 vector3 normalize_vec3(vector3 vec, double min, double max);
+vector3 denormalize_vec3(vector3 vec, double min, double max);
 
 // Scale up a vector vec by s
 vector3 scale_vec3(vector3 vec, double s);

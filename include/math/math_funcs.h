@@ -6,10 +6,13 @@
 
 vector2 find_cog(double m1,  vector2 pos1, double m2,  vector2 pos2);
 
+double scharzchild_radius(double mass);
+
 double standard_gravitational_parameter(double m1, double m2);
 
 // normalize values to something that opengl can render
 float normalize(double value, double min, double max);
+float denormalize(double value, double min, double max);
 
 //RK4 Implementations
 void cog_ref_runge_kutta(double t, double h, body_2d *body1, body_2d *body2);

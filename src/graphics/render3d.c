@@ -194,7 +194,8 @@ void init_3d_bodies(body_3d* bodies_array[], int NUM_BODIES){
 
         int num_segments = 50; // How many segments in da spheres
         bodies_array[i]->resolution = num_segments;
-        vector3* vertices = drawSphere(coords, normalize(b->radius,SPACE_MIN,SPACE_MAX), num_segments);
+        // normalizing radii of bodies need to be from 0->SPACE_MAX
+        vector3* vertices = drawSphere(coords, normalize(b->radius,0,SPACE_MAX), num_segments);
 
         // this is magic number-y. I should fix this
         int idx = num_segments * num_segments * 12;
@@ -228,53 +229,44 @@ GLuint init_grid(grid *g){
 
 
     // I admit, the generation code isn't the cleanest, but it works ¯\_(ツ)_/¯
+    // I need to look into an index buffer, a lot of this is re-used
 
     // The "step" is how far apart to draw each row/col
     // x and z define the bounds to draw
     // y is hardcoded to 0 as the reference point
     // CHANGING THESE REQUIRES A MANUAL CHANGE TO glDrawArrays() in draw_grid!
-    float step = 0.1f;
+    float step = 0.05f;
+
     float x_init = -4.0f;
     float z_init = -4.0f;
 
-    float x = x_init;
-    float z = z_init;
+    int rows = (int)ceilf((fabsf(x_init) + fabsf(x_init)) / step);
 
-    int rows = (int)(abs(x + x) / step);
     int vertices = (2 * rows * rows) * 2;
 
-    vector3 points[vertices];
+    vector3* points = malloc(vertices * sizeof(vector3));
 
     int index = 0;
 
     for(int i=0; i < rows; i++){ 
-        z = z_init;
+        float x = x_init + i * step;
         for(int j=0; j < rows; j++){
-            vector3 point = { x, 0.0f, z};
+            float z = z_init + j * step;
+            points[index++] = (vector3){ x, 0.0f, z};
             z = z + step;
-            vector3 next_point = { x, 0.0f, z};
-            points[index++] = point;
-            points[index++] = next_point;
+            points[index++] = (vector3){ x, 0.0f, z};
         }
-        x = x + step;
     }
 
-    x = x_init;
-    z = z_init;
     for(int i=0; i < rows; i++){ 
-        x = x_init;
+        float z = z_init + i * step;
         for(int j=0; j < rows; j++){
-            vector3 point = { x, 0.0f, z};
+            float x = x_init + j * step;
+            points[index++] = (vector3){ x, 0.0f, z};
             x = x + step;
-            vector3 next_point = { x, 0.0f, z};
-            points[index++] = point;
-            points[index++] = next_point;
+            points[index++] = (vector3){ x, 0.0f, z};
         }
-        z = z + step;
     }
-
-    printf("index = %d", index);
-
 
     glBindBuffer( GL_ARRAY_BUFFER, g->vbo );
     glBufferData( GL_ARRAY_BUFFER, vertices * sizeof(vector3), points, GL_STATIC_DRAW );
@@ -283,6 +275,7 @@ GLuint init_grid(grid *g){
     glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, sizeof(vector3), (void*)0);
     glBindVertexArray(0);
 
+    free(points); // loaded in the vbo, doesn't need to be on heap anymore
 
     // Shader init
     const char* fpath = "shaders/grid.vert";
@@ -323,24 +316,22 @@ GLuint init_grid(grid *g){
     return grid_shaders;
 }
 
-void draw_grid(grid *g, GLuint grid_shaders, float* view, float* projection){
+void draw_grid(grid *g, GLuint projLoc, GLuint viewLoc, GLuint modelLoc, float* view, float* projection){
 
-   
 
-    glUseProgram( grid_shaders );
-    GLuint projLoc = glGetUniformLocation(grid_shaders, "projection");
+    //GLuint projLoc = glGetUniformLocation(grid_shaders, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
 
-    GLuint viewLoc = glGetUniformLocation(grid_shaders, "view");
+    //GLuint viewLoc = glGetUniformLocation(grid_shaders, "view");
     glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view);
 
-    // GLuint modelLoc = glGetUniformLocation(grid_shaders, "model");
-    // glUniformMatrix4fv(modelLoc, 1, GL_FALSE, identityMatrix4);
+    //GLuint modelLoc = glGetUniformLocation(grid_shaders, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, identityMatrix4);
     
 
     glBindVertexArray( g->vao );
     // THE DRAW BYTES ARE HARDCODED
-    glDrawArrays(GL_LINES, 0, 25600);
+    glDrawArrays(GL_LINES, 0, 512000);
 
 }
 
@@ -350,13 +341,13 @@ void show_debug_message(int run, int nbFrames, body_3d* bodies_array[], int NUM_
         // debug printf statements
         printf("\nCurrent Frame = %d", run);
         printf("\n%f ms/frame", 1000.0/(double)(nbFrames));
+        printf("\nFPS: %f", (double)nbFrames / 1.0);
         printf("\nRendering With: %s", glGetString(GL_RENDERER));
         for(int i=0;i<NUM_BODIES;i++){
-            printf("\n B%d Velocity = {%f, %f, %f}", i, bodies_array[i]->velocity.x, bodies_array[i]->velocity.y, bodies_array[i]->velocity.z);
-            printf("\n B%d Position = {%f, %f, %f}", i, bodies_array[i]->pos.x, bodies_array[i]->pos.y, bodies_array[i]->pos.z);
+            printf("\nB%d Velocity = {%f, %f, %f}", i+1, bodies_array[i]->velocity.x, bodies_array[i]->velocity.y, bodies_array[i]->velocity.z);
+            printf("\nB%d Position = {%f, %f, %f}", i+1, bodies_array[i]->pos.x, bodies_array[i]->pos.y, bodies_array[i]->pos.z);
         }
 }
-
 
 void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const int NUM_BODIES, const bool DEBUG){
 
@@ -400,38 +391,84 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
 
     //setup the camera
     camera *cam = malloc(sizeof(camera));
-    vector3 camera_pos = {0,-0.3f,-2};
+    vector3 camera_pos = {0,-0.3f,-5};
     cam->pos = camera_pos;
-    const float cameraSpeed = 0.00001f; 
+    const float cameraSpeed = 0.00005f; 
     float angle_x, angle_y, angle_z;
     angle_x = angle_y = angle_z = 0.0f;
 
     // Init the bodies
     init_3d_bodies(bodies_array, NUM_BODIES);
+
     // Init the grid
     grid *g = ( grid* )malloc(sizeof(grid));
     GLuint grid_shaders = init_grid(g);
+    GLuint warpLoc = glGetUniformLocation(grid_shaders, "warp");
+    GLuint gridPosLoc = glGetUniformLocation(grid_shaders, "gridPos");
+
+    glUseProgram( grid_shaders );
+    GLuint gridPosCountLoc = glGetUniformLocation(grid_shaders, "gridPosCount");
+    if(gridPosCountLoc == -1){
+        printf("Failed to get gridPosCount uniform");
+    }
+    glUniform1i(gridPosCountLoc, NUM_BODIES);
+
+    // arrays in the grid shaders
+    vector3 planetGridPos[NUM_BODIES];
+    float warp[NUM_BODIES];
+    float grid_r_s[NUM_BODIES];
+    float grid_radius[NUM_BODIES];
+
 
     // This is sorta-temp code while I figure out how I want to do the translations long-term
     vector3 init_bodies_pos[NUM_BODIES];
     for(int i=0; i < NUM_BODIES; i++){
 
         init_bodies_pos[i] = bodies_array[i]->pos;
+        grid_r_s[i] = normalize(scharzchild_radius(bodies_array[i]->mass), 0, SPACE_MAX);
+        grid_radius[i] = normalize(bodies_array[i]->radius, 0, SPACE_MAX);
+        printf("Schwarzchild Radius of %d = %f, Noramlized = %f\n", i+1, scharzchild_radius(bodies_array[i]->mass), grid_r_s[i]);
 
     }
 
     double lastTime = glfwGetTime();
     int nbFrames = 0;
-    int run = 0;  
+    int run = 0;
     matrix4 lightModel;
 
+    glUseProgram( shaders );
+    // get the uniform locations
+    // the model view and projection of the bodies
+    GLuint modelLoc = glGetUniformLocation(shaders, "model");
+    GLuint projLoc = glGetUniformLocation(shaders, "projection");
+    GLuint viewLoc = glGetUniformLocation(shaders, "view");
+    ///
+    GLuint ambientStrengthLoc = glGetUniformLocation(shaders, "ambientStrength");
+    GLuint diffuseStrengthLoc = glGetUniformLocation(shaders, "diffuseStrength");
+    GLuint lightModelLoc = glGetUniformLocation(shaders, "lightModel");
+    if(lightModelLoc == -1){
+        printf("failed to get lightModel uniform");
+    }
+    GLuint objColorLoc = glGetUniformLocation(shaders, "objectColor");
     // Set the pos of the diffuse light
     GLuint lightPos = glGetUniformLocation(shaders, "lightPos");
     if(lightPos == -1){
         printf("Failed to get uniform lightPos");
     }
+
+    // There actually just shouldn't be a light source if theres no stars
     glUniform3f(lightPos, 0.0f, 0.0f, 0.0f);
 
+    // get the grid shader uniform locations
+    GLuint gridProjLoc = glGetUniformLocation(grid_shaders, "projection");
+    GLuint gridViewLoc = glGetUniformLocation(grid_shaders, "view");
+    GLuint gridModelLoc = glGetUniformLocation(grid_shaders, "model");
+    GLuint gridRealPos = glGetUniformLocation(grid_shaders, "realPos");
+    GLuint gridBodyRadius = glGetUniformLocation(grid_shaders, "radius");
+    GLuint scharzchildLoc = glGetUniformLocation(grid_shaders, "r_s");
+
+
+    
     while ( !glfwWindowShouldClose( window ) ) {
         nbFrames++;
         run++;
@@ -495,7 +532,6 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
             angle_z -= 0.002f; 
         }
 
-
         float cx = cos(angle_x * 3.14159f / 180.0f);
         float sx = sin(angle_x * 3.14159f / 180.0f);
         float cy = cos(angle_y * 3.14159f / 180.0f);
@@ -520,27 +556,30 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
 
         glfwPollEvents();
         glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-        glUseProgram( shaders );
 
-        GLuint projLoc = glGetUniformLocation(shaders, "projection");
         glUseProgram( shaders );
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
-
-        GLuint viewLoc = glGetUniformLocation(shaders, "view");
-        glUseProgram( shaders );
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view);
-
-        rk4_nbody_3d(0, 100.0f, bodies_array, NUM_BODIES);
-
-        draw_grid(g, grid_shaders, view, projection);
-
-        glUseProgram( shaders );
+        rk4_nbody_3d(0, TIME_DELTA, bodies_array, NUM_BODIES);
 
         for(int i=0;i<NUM_BODIES;i++){ 
+
+            glUseProgram( shaders );
 
             body_3d *b = bodies_array[i];
 
             vector3 n_pos = normalize_vec3(subtract_vec3s(bodies_array[i]->pos,init_bodies_pos[i]), SPACE_MIN, SPACE_MAX);
+
+            vector3 b_pos = normalize_vec3(b->pos, SPACE_MIN, SPACE_MAX);
+
+            //glUniform3f(gridRealPos, n_pos.x, n_pos.y, n_pos.z);
+
+            // this is SLOW AS FUCK.... but proves my concept atleast so yay
+            // EXPERIMENTAL GRID FEAT
+           
+            vector3 n_pos_grid = { roundf(b_pos.x * 20.0f)/20.0f, 0.0f, roundf(b_pos.z * 20.0f)/20.0f };      
+
+            planetGridPos[i] = n_pos_grid;
 
             matrix4 model = {
                 {1.0, 0.0, 0.0, n_pos.x},
@@ -549,35 +588,31 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
                 {0.0, 0.0, 0.0, 1.0}
             };
 
-            GLuint modelLoc = glGetUniformLocation(shaders, "model");
 
             //Should this exit the program?
             if (modelLoc == -1){
                 printf("failed to get model from shader\n");
             }
 
-            glUseProgram( shaders );
             glUniformMatrix4fv(modelLoc, 1, GL_TRUE, (const GLfloat *)model);
             glBindVertexArray( bodies_array[i]->vao );
 
             // Setup obj color
-            glUseProgram( shaders );
-            GLuint objColorLoc = glGetUniformLocation(shaders, "objectColor");
             if(objColorLoc == -1){
                 printf("failed to get objectColor uniform");
             }
             glUniform3f(objColorLoc, b->color.r, b->color.g, b->color.b);
 
             //update the lighting
-            // get the ambient strength
-            GLuint ambientStrengthLoc = glGetUniformLocation(shaders, "ambientStrength");
+
             if(ambientStrengthLoc == -1){
                 printf("failed to get ambientStrength uniform");
             }
 
-            // this should just be the model matrix of any object tagged as a "star"
-            // but right now, its hardcoded to be the object at arr 0
-            if(i == 0 ){
+            // Check if a body is defined as a star
+            // If yes, give is an ambient strength of max and add it as a light source (iffy)
+            if(b->type == STAR){\
+                glUniform1f(diffuseStrengthLoc, 1.0f);
                 memcpy(lightModel, model, sizeof(model));
                 // keep it always bright (like a star)
                 glUniform1f(ambientStrengthLoc, 1.0f);
@@ -585,10 +620,6 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
                 glUniform1f(ambientStrengthLoc, 0.08f);
             }
 
-            GLuint lightModelLoc = glGetUniformLocation(shaders, "lightModel");
-                if(lightModelLoc == -1){
-                    printf("failed to get lightModel uniform");
-                }
             glUniformMatrix4fv(lightModelLoc, 1, GL_TRUE, (const GLfloat *)lightModel);
 
             int res = bodies_array[i]->resolution;
@@ -596,8 +627,20 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
             int b_render = res * res * 6; 
             glDrawArrays(GL_TRIANGLES, 0, b_render);
 
+            // Send the radius to the shader for this body
+            // Used to calculate Flamm's
+            glUseProgram( grid_shaders );
+            glUniform1fv(gridBodyRadius, NUM_BODIES, (const GLfloat *)grid_radius);
+            glUniform1fv(scharzchildLoc, NUM_BODIES, (const GLfloat *)grid_r_s);
+            
         }
 
+        glUseProgram( grid_shaders );
+
+        glUniform3fv(gridPosLoc, NUM_BODIES, (const GLfloat *)planetGridPos);
+        glUniform1fv(warpLoc, NUM_BODIES, (const GLfloat *)warp);
+
+        draw_grid(g, gridProjLoc, gridViewLoc, gridModelLoc, view, projection);
         glfwSwapBuffers( window );
 
     }

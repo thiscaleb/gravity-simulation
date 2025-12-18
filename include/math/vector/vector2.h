@@ -4,8 +4,9 @@
 //2 Dimensional Vector
 typedef struct 
 {
-    float x; 
-    float y;
+    double x; 
+    double y;
+    
 } vector2;
 
 // normalize a two_d_vectpr to something that opengl can render

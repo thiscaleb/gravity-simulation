@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <unistd.h>
 #include <math.h>
 #include "math/math_funcs.h"
 #include "math/vector/vector2.h"
@@ -8,17 +9,27 @@
 // normalize values to something that opengl can render
 float normalize(double value, double min, double max) {
 
-    float norm = (float)(2.0 * (value - min) / (max - min) - 1.0);
+    float norm = (float)(value - min) / (max - min);
 
-    if(norm < 0.003f){ // I want to be able to atleast kind of see it
-        return 0.003f;
+    if(norm < 0.0002f){ // I want to be able to atleast kind of see it
+       return 0.0002f;
     }
 
-    return norm * 2; //inflate the values for visibility
+    if(norm > 1.0f){
+        return 1.0f;
+    } // clamping it to 1.0f
+
+    return norm; 
+}
+
+
+float denormalize(double value, double min, double max){
+    float original = value * (max - min) + min;
+    return original;
 }
 
 // to find the center of gravity
- vector2 find_cog(double m1,  vector2 pos1, double m2,  vector2 pos2){
+ vector2 find_cog(double m1, vector2 pos1, double m2,  vector2 pos2){
 
     vector2 barycenter;
 
@@ -36,6 +47,11 @@ float normalize(double value, double min, double max) {
 // Since this is applicable in cases where m1 >> m2, we can assume u ~= Gm1
 double standard_gravitational_parameter(double m1, double m2){
     return (G * (m1 + m2));
+}
+
+// take the mass (kg) of an object and determine its scharzchild radius
+double scharzchild_radius(double mass){
+    return (2 * G * mass) / (double)(c * c);
 }
 
 // RK4 Helper Function
@@ -78,7 +94,7 @@ vector2 f_v_rel_cog(double t, vector2 self_pos, vector2 other_pos, double mass_o
 
     double r = sqrt(r_vec.x * r_vec.x + r_vec.y * r_vec.y);
 
-    const double epsilon = 1e-5;
+    const float epsilon = 1e-5;
     if (r < epsilon) {
         return (vector2){0.0, 0.0};
     }
@@ -263,6 +279,7 @@ void cog_ref_runge_kutta(double t, double h, body_2d *body1, body_2d *body2){
     (m1 * v1_init.y + m2 * v2_init.y) / (m1 + m2)
     };
     vector2 com = find_cog(m1, x1_init, m2, x2_init);
+
     vector2 x1 = { x1_init.x - com.x, x1_init.y - com.y };
     vector2 x2 = { x2_init.x - com.x, x2_init.y - com.y };
 

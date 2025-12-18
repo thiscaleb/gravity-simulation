@@ -60,8 +60,7 @@ int main(int argc, char **argv){
             case 't': 
                 TIME_DELTA = atof(optarg);
                 if(TIME_DELTA == 0.0){
-                    printf("Time Step set to 0.0. No time will pass. Closing simulation...\n");
-                    exit(0);
+                    printf("Time Step set to 0.0. No time will pass\n");
                 } 
                 printf("Time Step Value is: %f\n", TIME_DELTA); 
                 break; 

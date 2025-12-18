@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 // RK4 Helper Function
-vector3 f_x_3d(double t, vector3 x, vector3 v){
+static vector3 f_x_3d(double t, vector3 x, vector3 v){
     return v;
 }
 
@@ -12,7 +12,7 @@ vector3 f_x_3d(double t, vector3 x, vector3 v){
 // Determine the acceleration on body i from N other bodies in the system
 // Newtonian Physics
 // N = NUM_BODIES
-vector3 f_v_nbody_3d(double t, vector3 pos_self, body_3d* bodies[], int index, int N){
+static vector3 f_v_nbody_3d(double t, vector3 pos_self, body_3d* bodies[], int index, int N){
 
     vector3 accel = {0,0}; // init accel
 
