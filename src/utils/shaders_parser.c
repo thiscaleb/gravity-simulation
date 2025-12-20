@@ -8,18 +8,18 @@ char* parse_shader_file(const char* fpath){
 
     FILE *fh = fopen(fpath, "rb");
 
+    if (fh == NULL) {
+        printf("vertex file not found");
+        return NULL;
+    }
+
     int fsize;
 
     fseek( fh, 0, SEEK_END );
     fsize = ftell( fh );
     rewind( fh );
 
-    char* vertex_shader = malloc(fsize);
-
-    if (fh == NULL) {
-        printf("vertex file not found");
-        return NULL;
-    }
+    char* vertex_shader = malloc(fsize + 1);
 
     fread(vertex_shader, sizeof( char ), fsize, fh);
 

@@ -139,10 +139,12 @@ GLuint init_shaders(){
     GLuint vs = glCreateShader( GL_VERTEX_SHADER );
     glShaderSource( vs, 1, (const GLchar**)&vertex_shader, NULL );
     glCompileShader( vs );
+    free(vertex_shader);
 
     GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
     glShaderSource( fs, 1, (const GLchar**)&fragment_shader, NULL );
     glCompileShader( fs );
+    free(fragment_shader);
 
     GLuint shader_program = glCreateProgram();
     glAttachShader( shader_program, fs );
@@ -202,6 +204,9 @@ void init_3d_bodies(body_3d* bodies_array[], int NUM_BODIES){
 
         glBindBuffer( GL_ARRAY_BUFFER, b->vbo );
         glBufferData( GL_ARRAY_BUFFER, idx * sizeof(vector3), vertices, GL_STATIC_DRAW );
+        
+        // vertices can be freed once it is in the OpenGL buffer
+        free(vertices);
 
         glBindVertexArray( b->vao );
         glEnableVertexAttribArray( 0 );
@@ -287,11 +292,13 @@ GLuint init_grid(grid *g){
     GLuint vs = glCreateShader( GL_VERTEX_SHADER );
     glShaderSource( vs, 1, (const GLchar**)&vertex_shader, NULL );
     glCompileShader( vs );
+    free(vertex_shader);
 
     GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
     glShaderSource( fs, 1, (const GLchar**)&fragment_shader, NULL );
     glCompileShader( fs );
-
+    free(fragment_shader);
+    
     GLuint grid_shaders = glCreateProgram();
     glAttachShader( grid_shaders, fs );
     glAttachShader( grid_shaders, vs );
@@ -646,6 +653,9 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
     }
     glfwDestroyWindow(window);
     glfwTerminate();
+
+    //Free some stuff
+    free(cam);
 
     puts("\nSimulation Ending...");
 }

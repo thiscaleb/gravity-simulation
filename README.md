@@ -8,13 +8,14 @@ Using the equations from [here](https://orbital-mechanics.space) as a guide.
 - Make the orbit trails configurable
 - Add textures?
 - Make the bodies spin? (would need textures)
+- Fix the memory leaks. Especially in the YAML parser
 
 
 ## Guide
 
 ### Dependencies
 
-- OpenGL 4.6
+- OpenGL 4.3+
 
 ```
 sudo apt install libglfw3-dev libyaml-dev
@@ -31,3 +32,6 @@ sudo apt install libglfw3-dev libyaml-dev
 | -h   | Open the help menu                            | N/A                     |
 | -n   | Define the number of bodies to render         | 0 - N                   |
 
+
+### Known Issues
+- Compiling with an optimization setting higher than -O0 can cause crashes on Nvidia GPUs
