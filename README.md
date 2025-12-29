@@ -14,12 +14,13 @@ Project is licensed under the [GNU Affero General Public License](https://www.gn
 - Make the camera auto-track an object
 
 
-
 ## Guide
 
 ### Dependencies
 
 - OpenGL 4.3+
+- GCC 14+
+- The following libs:
 ```
 sudo apt install libglfw3-dev libyaml-dev
 ```

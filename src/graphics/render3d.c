@@ -96,7 +96,7 @@ GLFWwindow* init_render(){
     }
 
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 4 );
-    glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 6 );
+    glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
     glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
     glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 
@@ -283,26 +283,17 @@ GLuint init_grid(grid *g){
     free(points); // loaded in the vbo, doesn't need to be on heap anymore
 
     // Shader init
-    const char* fpath = "shaders/grid.vert";
-    char* vertex_shader = parse_shader_file(fpath);
+    const char* vert_path = "shaders/grid.vert";
+    char* vertex_shader = parse_shader_file(vert_path);
 
     const char* frag_path = "shaders/grid.frag";
     char* fragment_shader = parse_shader_file(frag_path);
 
+    // vert shader setup / check
     GLuint vs = glCreateShader( GL_VERTEX_SHADER );
     glShaderSource( vs, 1, (const GLchar**)&vertex_shader, NULL );
     glCompileShader( vs );
     free(vertex_shader);
-
-    GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
-    glShaderSource( fs, 1, (const GLchar**)&fragment_shader, NULL );
-    glCompileShader( fs );
-    free(fragment_shader);
-    
-    GLuint grid_shaders = glCreateProgram();
-    glAttachShader( grid_shaders, fs );
-    glAttachShader( grid_shaders, vs );
-    glLinkProgram( grid_shaders );
 
     GLint success;
 
@@ -313,10 +304,30 @@ GLuint init_grid(grid *g){
         return -1;
     }
 
+    // frag shader setup / check
+    GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
+    glShaderSource( fs, 1, (const GLchar**)&fragment_shader, NULL );
+    glCompileShader( fs );
+    free(fragment_shader);
+
     glGetShaderiv(fs, GL_COMPILE_STATUS, &success);
     if (success != GL_TRUE)
     { 
         printf("Failed to compile fragment shader.\n");
+        return -1;
+    }
+    
+    // linking grid shader to the program
+    GLuint grid_shaders = glCreateProgram();
+    glAttachShader( grid_shaders, fs );
+    glAttachShader( grid_shaders, vs );
+    glLinkProgram( grid_shaders );
+
+    glGetProgramiv(grid_shaders, GL_LINK_STATUS, &success);
+    if (success != GL_TRUE)
+    {
+        printf("Failed to link grid shader program.\n");
+        glDeleteProgram(grid_shaders);
         return -1;
     }
 
@@ -475,7 +486,7 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
     GLuint gridProjLoc = glGetUniformLocation(grid_shaders, "projection");
     GLuint gridViewLoc = glGetUniformLocation(grid_shaders, "view");
     GLuint gridModelLoc = glGetUniformLocation(grid_shaders, "model");
-    GLuint gridRealPos = glGetUniformLocation(grid_shaders, "realPos");
+    //GLuint gridRealPos = glGetUniformLocation(grid_shaders, "realPos");
     GLuint gridBodyRadius = glGetUniformLocation(grid_shaders, "radius");
     GLuint scharzchildLoc = glGetUniformLocation(grid_shaders, "r_s");
 

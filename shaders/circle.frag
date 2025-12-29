@@ -1,4 +1,4 @@
-#version 460 core
+#version 430 core
 uniform vec3 objectColor;
 out vec4 frag_colour;
 void main() {
