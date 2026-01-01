@@ -96,7 +96,7 @@ GLFWwindow* init_render(){
     }
 
     glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 4 );
-    glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 6 );
+    glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
     glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
     glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 
@@ -179,9 +179,9 @@ GLuint init_shaders(){
 
 }
 
-void init_3d_bodies(body_3d* bodies_array[], int NUM_BODIES){
+void init_3d_bodies(body_3d* bodies_array[], int num_bodies){
   
-    for(int i=0; i < NUM_BODIES ;i++){
+    for(int i=0; i < num_bodies ;i++){
 
         body_3d* b = bodies_array[i];
 
@@ -283,26 +283,17 @@ GLuint init_grid(grid *g){
     free(points); // loaded in the vbo, doesn't need to be on heap anymore
 
     // Shader init
-    const char* fpath = "shaders/grid.vert";
-    char* vertex_shader = parse_shader_file(fpath);
+    const char* vert_path = "shaders/grid.vert";
+    char* vertex_shader = parse_shader_file(vert_path);
 
     const char* frag_path = "shaders/grid.frag";
     char* fragment_shader = parse_shader_file(frag_path);
 
+    // vert shader setup / check
     GLuint vs = glCreateShader( GL_VERTEX_SHADER );
     glShaderSource( vs, 1, (const GLchar**)&vertex_shader, NULL );
     glCompileShader( vs );
     free(vertex_shader);
-
-    GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
-    glShaderSource( fs, 1, (const GLchar**)&fragment_shader, NULL );
-    glCompileShader( fs );
-    free(fragment_shader);
-    
-    GLuint grid_shaders = glCreateProgram();
-    glAttachShader( grid_shaders, fs );
-    glAttachShader( grid_shaders, vs );
-    glLinkProgram( grid_shaders );
 
     GLint success;
 
@@ -313,10 +304,30 @@ GLuint init_grid(grid *g){
         return -1;
     }
 
+    // frag shader setup / check
+    GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
+    glShaderSource( fs, 1, (const GLchar**)&fragment_shader, NULL );
+    glCompileShader( fs );
+    free(fragment_shader);
+
     glGetShaderiv(fs, GL_COMPILE_STATUS, &success);
     if (success != GL_TRUE)
     { 
         printf("Failed to compile fragment shader.\n");
+        return -1;
+    }
+    
+    // linking grid shader to the program
+    GLuint grid_shaders = glCreateProgram();
+    glAttachShader( grid_shaders, fs );
+    glAttachShader( grid_shaders, vs );
+    glLinkProgram( grid_shaders );
+
+    glGetProgramiv(grid_shaders, GL_LINK_STATUS, &success);
+    if (success != GL_TRUE)
+    {
+        printf("Failed to link grid shader program.\n");
+        glDeleteProgram(grid_shaders);
         return -1;
     }
 
@@ -342,7 +353,7 @@ void draw_grid(grid *g, GLuint projLoc, GLuint viewLoc, GLuint modelLoc, float* 
 
 }
 
-void show_debug_message(int run, int nbFrames, body_3d* bodies_array[], int NUM_BODIES){
+void show_debug_message(int run, int nbFrames, body_3d* bodies_array[], int num_bodies){
 
         // printf and reset timer
         // debug printf statements
@@ -350,13 +361,13 @@ void show_debug_message(int run, int nbFrames, body_3d* bodies_array[], int NUM_
         printf("\n%f ms/frame", 1000.0/(double)(nbFrames));
         printf("\nFPS: %f", (double)nbFrames / 1.0);
         printf("\nRendering With: %s", glGetString(GL_RENDERER));
-        for(int i=0;i<NUM_BODIES;i++){
+        for(int i=0;i<num_bodies;i++){
             printf("\nB%d Velocity = {%f, %f, %f}", i+1, bodies_array[i]->velocity.x, bodies_array[i]->velocity.y, bodies_array[i]->velocity.z);
             printf("\nB%d Position = {%f, %f, %f}", i+1, bodies_array[i]->pos.x, bodies_array[i]->pos.y, bodies_array[i]->pos.z);
         }
 }
 
-void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const int NUM_BODIES, const bool DEBUG){
+void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const int num_bodies, const bool debug){
 
     //start glfw and glad
     GLFWwindow* window = init_render();
@@ -410,7 +421,7 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
     angle_x = angle_y = angle_z = 0.0f;
 
     // Init the bodies
-    init_3d_bodies(bodies_array, NUM_BODIES);
+    init_3d_bodies(bodies_array, num_bodies);
 
     // Init the grid
     grid *g = ( grid* )malloc(sizeof(grid));
@@ -423,18 +434,18 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
     if(gridPosCountLoc == -1){
         printf("Failed to get gridPosCount uniform");
     }
-    glUniform1i(gridPosCountLoc, NUM_BODIES);
+    glUniform1i(gridPosCountLoc, num_bodies);
 
     // arrays in the grid shaders
-    vector3 planetGridPos[NUM_BODIES];
-    float warp[NUM_BODIES];
-    float grid_r_s[NUM_BODIES];
-    float grid_radius[NUM_BODIES];
+    vector3 planetGridPos[num_bodies];
+    float warp[num_bodies];
+    float grid_r_s[num_bodies];
+    float grid_radius[num_bodies];
 
 
     // This is sorta-temp code while I figure out how I want to do the translations long-term
-    vector3 init_bodies_pos[NUM_BODIES];
-    for(int i=0; i < NUM_BODIES; i++){
+    vector3 init_bodies_pos[num_bodies];
+    for(int i=0; i < num_bodies; i++){
 
         init_bodies_pos[i] = bodies_array[i]->pos;
         grid_r_s[i] = normalize(scharzchild_radius(bodies_array[i]->mass), 0, SPACE_MAX);
@@ -475,7 +486,7 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
     GLuint gridProjLoc = glGetUniformLocation(grid_shaders, "projection");
     GLuint gridViewLoc = glGetUniformLocation(grid_shaders, "view");
     GLuint gridModelLoc = glGetUniformLocation(grid_shaders, "model");
-    GLuint gridRealPos = glGetUniformLocation(grid_shaders, "realPos");
+    //GLuint gridRealPos = glGetUniformLocation(grid_shaders, "realPos");
     GLuint gridBodyRadius = glGetUniformLocation(grid_shaders, "radius");
     GLuint scharzchildLoc = glGetUniformLocation(grid_shaders, "r_s");
 
@@ -486,8 +497,8 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
         run++;
         // Frame timer
         double currentTime = glfwGetTime();
-        if ( currentTime - lastTime >= 1.0 && DEBUG){ // If last prinf() was more than 1 sec ago
-            show_debug_message(run, nbFrames, bodies_array, NUM_BODIES);
+        if ( currentTime - lastTime >= 1.0 && debug){ // If last prinf() was more than 1 sec ago
+            show_debug_message(run, nbFrames, bodies_array, num_bodies);
             lastTime += 1.0;
             nbFrames = 0;
         }
@@ -591,9 +602,9 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
         glUseProgram( shaders );
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view);
-        rk4_nbody_3d(0, TIME_DELTA, bodies_array, NUM_BODIES);
+        rk4_nbody_3d(0, timeskip, bodies_array, num_bodies);
 
-        for(int i=0;i<NUM_BODIES;i++){ 
+        for(int i=0;i<num_bodies;i++){ 
 
             glUseProgram( shaders );
 
@@ -661,15 +672,15 @@ void render3d(body_3d* bodies_array[], int REF_FRAME_CODE, int TIME_DELTA, const
             // Send the radius to the shader for this body
             // Used to calculate Flamm's
             glUseProgram( grid_shaders );
-            glUniform1fv(gridBodyRadius, NUM_BODIES, (const GLfloat *)grid_radius);
-            glUniform1fv(scharzchildLoc, NUM_BODIES, (const GLfloat *)grid_r_s);
+            glUniform1fv(gridBodyRadius, num_bodies, (const GLfloat *)grid_radius);
+            glUniform1fv(scharzchildLoc, num_bodies, (const GLfloat *)grid_r_s);
             
         }
 
         glUseProgram( grid_shaders );
 
-        glUniform3fv(gridPosLoc, NUM_BODIES, (const GLfloat *)planetGridPos);
-        glUniform1fv(warpLoc, NUM_BODIES, (const GLfloat *)warp);
+        glUniform3fv(gridPosLoc, num_bodies, (const GLfloat *)planetGridPos);
+        glUniform1fv(warpLoc, num_bodies, (const GLfloat *)warp);
 
         draw_grid(g, gridProjLoc, gridViewLoc, gridModelLoc, view, projection);
         glfwSwapBuffers( window );

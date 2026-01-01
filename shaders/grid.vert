@@ -1,4 +1,4 @@
-#version 460 core
+#version 430 core
 layout(location = 0) in vec3 vp;
 
 uniform mat4 model; 
@@ -36,7 +36,8 @@ void main() {
 
         float dx = v.x - gridPos[i].x;
         float dz = v.z - gridPos[i].z;
-        float r = sqrt(dx*dx + dz*dz); // distance to body
+        vec2 d = v.xz - gridPos[i].xz;
+        float r = length(d); // distance to body
 
         if(r < radius[i]){
             r = radius[i];

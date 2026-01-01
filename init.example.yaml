@@ -7,8 +7,8 @@ bodies:
     Color: ff1320
     Type: Star
   - Name: Body2
-    Mass: 97219E24
-    Radius: 695700E4
+    Mass: 9.7219E24
+    Radius: 695700E3
     Position: 149597870700,0,0
     Velocity: 10E3,16E3, 8E3
     Color: 0000FF
