@@ -1,11 +1,11 @@
+#include <string.h>
 #include "graphics/render3d.h"
+#include "math/math_funcs.h"
 #include "math/vector/vector3.h"
 #include "math/vector/vector4.h"
 #include "math/matrix/matrix4.h"
 #include "physics/gravity3d.h"
-#include "math/math_funcs.h"
 #include "utils/shaders_parser.h"
-#include <string.h>
 
 vector3* drawSphere(vector3 s, float r, int NUM_SEGMENTS) {
 

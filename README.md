@@ -12,6 +12,7 @@ Project is licensed under the [GNU Affero General Public License](https://www.gn
 - Make the bodies spin? (would need textures)
 - Fix the memory leaks. Especially in the YAML parser
 - Make the camera auto-track an object
+- Make the lighting dim the further you are from an object
 
 
 ## Guide

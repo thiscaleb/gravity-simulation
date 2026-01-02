@@ -5,6 +5,15 @@
 #include "physics/gravity.h"
 #include "utils/structures.h"
 
+/*
+
+NOTICE! The code in here does NOT work  well! 
+
+
+*/
+
+
+
 //calculate angular velocity of cog ref frame between two bodies
 // double angular_velocity(body_2d *b1, body_2d *b2){
 //     double u = standard_gravitational_parameter(b1->mass, b2->mass);

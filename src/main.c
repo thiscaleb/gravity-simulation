@@ -6,10 +6,11 @@
 #include <getopt.h>
 #include "utils/config_parser.h"
 #include "utils/structures.h"
-#include "physics/gravity.h"
 #include "math/math_funcs.h"
 #include "physics/cr3bp.h"
 #include "graphics/render3d.h"
+#include "graphics/render.h"
+
 
 //Take the string argument for render_mode. Validate that it is correct
 // Return an int code to make it easier to work with
@@ -90,6 +91,16 @@ int main(int argc, char **argv){
     //Ensure Num Bodies is not 0
     if(NUM_BODIES == 0){
         printf("NUM_BODIES is set to 0. Please add atleast one.\n");
+    }
+
+    if(NUM_BODIES != 2 && (REF_FRAME_CODE == 101 || REF_FRAME_CODE == 102)){
+        printf("Simulation can only run in this mode with two (2) bodies\n");
+        exit(0);
+    }
+
+    if(NUM_BODIES !=3 && REF_FRAME_CODE == 103){
+        printf("Simulation can only run in this mode with three (3) bodies\n");
+        exit(0);
     }
 
     // Create the NUM_BODIES array
