@@ -10,8 +10,8 @@ float normalize(double value, double min, double max) {
 
     float norm = (float)(value - min) / (max - min);
 
-    if(norm < 0.0002f){ // I want to be able to atleast kind of see it
-       return 0.0002f;
+    if(norm < 0.0000005f){ // I want to be able to atleast kind of see it
+       return 0.0000005f;
     }
 
     if(norm > 1.0f){

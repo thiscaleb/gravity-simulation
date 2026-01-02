@@ -7,8 +7,9 @@ uniform float ambientStrength;
 uniform float diffuseStrength;
 uniform vec3 objectColor;
 uniform vec3 lightColor;
-uniform vec3 lightPos;
-uniform mat4 lightModel;
+uniform vec3 lightPos[32];
+uniform mat4 lightModel[32];
+uniform int numLightSources;
 
 void main()
 {
@@ -16,11 +17,17 @@ void main()
 
     vec3 norm = normalize(Normal);
 
-    vec3 lp = vec3(lightModel * vec4(lightPos, 1.0));
-    vec3 lightDir = normalize(lp - FragPos);  
+    vec3 diffuse = vec3(0.0);
 
-    float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = diff * lightColor * diffuseStrength;
+    for(int i=0; i < numLightSources; i++){
+
+        vec3 lp = vec3(lightModel[i] * vec4(lightPos[i], 1.0));
+        vec3 lightDir = normalize(lp - FragPos);  
+
+        float diff = max(dot(norm, lightDir), 0.0);
+        diffuse += diff * lightColor * diffuseStrength;
+
+    }
 
     vec3 result = (ambient + diffuse) * objectColor;
 

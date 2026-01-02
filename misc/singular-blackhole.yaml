@@ -1,0 +1,9 @@
+# Single Black Hole
+# This looks the best if you set SPACE_MIN and SPACE_MAX close to the event horizon
+bodies:
+  - Name: Body1
+    Mass: 50.9891E34
+    Radius: 695700E3
+    Position: 0,0,0
+    Velocity: 0E3,0E3, 0E3
+    Color: ff0000 

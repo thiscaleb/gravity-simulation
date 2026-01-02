@@ -10,24 +10,21 @@ uniform float warp[32];
 uniform float radius[32];
 uniform float r_s[32];
 
-// this returns a normalized mappings of flamm's which i'm using for my grids
+//Since Flamm's is normally so small, incrase the magnitude sometimes if you want to see more
+uniform float magnitude;
+
+// This returns an offset of Y to use for Flamm's
+// This number is subtracted from the y coordinate on the grid to create the curvature
 // look into smoothstep: https://docs.gl/sl4/smoothstep
 float flamms_parabaloid(float r, float r_s) {
-    float minVal = -1.0;
-    float maxVal = 1.0;
 
-    if (r <= r_s) {
-        return -minVal;
-    }
+    float m = magnitude;
 
-    float z = -2.0 * sqrt(max(0.0,r_s * (r - r_s)));
+    float z = 2.0 * sqrt(max(0.0,r_s * (r - r_s))) * m;
 
-    float normalized_z = (z - minVal) / (maxVal - minVal);
-    return normalized_z;
+    return z;
 }
 
-
-// this works ish?
 void main() {
 
     vec3 v = vp; 
@@ -43,7 +40,18 @@ void main() {
             r = radius[i];
         }
 
-        v.y -= flamms_parabaloid(r, r_s[i]);
+        if (r <= r_s[i]){
+
+            // I'm choosing to represent singularity with -1.0f.
+            v.y = -1.0f;
+
+        } else {
+
+            float offset = flamms_parabaloid(r, r_s[i]);
+            v.y += offset;
+
+        }
+
     }
 
     gl_Position = projection * view * model * vec4(v, 1.0);
