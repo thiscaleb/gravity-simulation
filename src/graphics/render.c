@@ -13,7 +13,7 @@
 // OpenGL reference: https://antongerdelan.net/opengl/hellotriangle.html
 
 // Function to draw a circle at (cx, cy) with radius 
-double* drawCircle(vector2 c, float r, int num_segments) {
+[[gnu::pure]] double* drawCircle(vector2 c, float r, int num_segments) {
 
     // Center of circle
     double cx = c.x;
@@ -366,14 +366,14 @@ int render(body_2d* bodies_array[], int REF_FRAME_CODE, float timeskip, int num_
             vector2 n_pos = normalize_vec2(subtract_vec2s(b->pos,init_bodies_pos[i]), SPACE_MIN, SPACE_MAX);
 
             matrix4 m = {
-                {1.0, 0.0, 0.0, n_pos.x},
-                {0.0, 1.0, 0.0, n_pos.y},
+                {1.0, 0.0, 0.0, 0},
+                {0.0, 1.0, 0.0, 0},
                 {0.0, 0.0, 1.0, 0.0},
-                {0.0, 0.0, 0.0, 1.0}
+                {n_pos.x, n_pos.y, 0.0, 1.0}
             };
 
             glUseProgram( shader_program );
-            glUniformMatrix4fv(modelLocationBody, 1, GL_TRUE, (const GLfloat *)m);
+            glUniformMatrix4fv(modelLocationBody, 1, GL_FALSE, (const GLfloat *)m);
 
             //get the color
             int objectColorLoc = glGetUniformLocation(shader_program, "objectColor");

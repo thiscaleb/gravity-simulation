@@ -2,9 +2,9 @@
 #include "math/math_funcs.h"
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <unistd.h>
 // RK4 Helper Function
-static vector3 f_x_3d(double t, vector3 x, vector3 v){
+[[gnu::pure]] static vector3 f_x(double t, vector3 x, vector3 v){
     return v;
 }
 
@@ -12,7 +12,7 @@ static vector3 f_x_3d(double t, vector3 x, vector3 v){
 // Determine the acceleration on body i from N other bodies in the system
 // Newtonian Physics
 // N = NUM_BODIES
-static vector3 f_v_nbody_3d(double t, vector3 pos_self, body_3d* bodies[], int index, int N){
+[[gnu::pure]] static vector3 f_v_nbody_3d(double t, vector3 pos_self, body_3d* bodies[], int index, int N){
 
     vector3 accel = {0,0}; // init accel
 
@@ -36,7 +36,7 @@ static vector3 f_v_nbody_3d(double t, vector3 pos_self, body_3d* bodies[], int i
         const double epsilon = 10E6;
         if (r < epsilon) {
             printf("\nObject %d and object %d probably collided... Closing Simulation\n", i, index);
-            //exit(0);
+            exit(0);
         } 
 
         ddx = scale_vec3(ddx, 1 / (r * r * r));
@@ -78,7 +78,7 @@ void rk4_nbody_3d(double t, double h, body_3d* bodies[], int N){
         x[i] = bodies[i]->pos;
         v[i] = bodies[i]->velocity; 
 
-        k1_x[i] = f_x_3d(t,x[i], v[i]); 
+        k1_x[i] = f_x(t,x[i], v[i]); 
         k1_v[i] = f_v_nbody_3d(t,x[i],bodies,i,N);
 
         temp_bodies[i] = malloc(sizeof(body_3d)); //make a new space in memory for each one. this way I don't overwrite the real positions
@@ -91,7 +91,7 @@ void rk4_nbody_3d(double t, double h, body_3d* bodies[], int N){
     //Step 2
     for(int i = 0; i < N; i++){
 
-        k2_x[i] = f_x_3d(t + h * 0.5, temp_bodies[i]->pos, temp_bodies[i]->velocity); //multiply by 0.5 is faster than /2
+        k2_x[i] = f_x(t + h * 0.5, temp_bodies[i]->pos, temp_bodies[i]->velocity); //multiply by 0.5 is faster than /2
         k2_v[i] = f_v_nbody_3d(t + h * 0.5, temp_bodies[i]->pos, temp_bodies,i,N);
     }
 
@@ -105,7 +105,7 @@ void rk4_nbody_3d(double t, double h, body_3d* bodies[], int N){
     // Step 3
     for(int i = 0; i < N; i++){
 
-        k3_x[i] = f_x_3d(t + h * 0.5, temp_bodies[i]->pos, temp_bodies[i]->velocity);
+        k3_x[i] = f_x(t + h * 0.5, temp_bodies[i]->pos, temp_bodies[i]->velocity);
         k3_v[i] = f_v_nbody_3d(t + h * 0.5, temp_bodies[i]->pos, temp_bodies,i,N);
     }
 
@@ -119,7 +119,7 @@ void rk4_nbody_3d(double t, double h, body_3d* bodies[], int N){
     // Step 4
     for(int i = 0; i < N; i++){
 
-        k4_x[i] = f_x_3d(t + h, temp_bodies[i]->pos, temp_bodies[i]->velocity); 
+        k4_x[i] = f_x(t + h, temp_bodies[i]->pos, temp_bodies[i]->velocity); 
         k4_v[i] = f_v_nbody_3d(t + h, temp_bodies[i]->pos ,temp_bodies,i,N);
 
 
@@ -133,5 +133,119 @@ void rk4_nbody_3d(double t, double h, body_3d* bodies[], int N){
         free(temp_bodies[i]);
     }
 
+}
+
+
+// to find the center of gravity
+// This is a LOSSY function, due to the casting from double -> float
+// Should mostly work, but will produce inaccurate results at bigger values
+[[gnu::pure]] static vector3 find_cog(double m1, vector3 pos1, double m2,  vector3 pos2){
+
+    dvector3 barycenter;
+
+    barycenter.x = (m1 * pos1.x) + (m2 * pos2.x);
+    barycenter.y = ((m1 * pos1.y) + (m2 * pos2.y));
+    barycenter.z = ((m1 * pos1.z) + (m2 * pos2.z));
+
+    barycenter.x = barycenter.x / (m1 + m2);
+    barycenter.y = barycenter.y / (m1 + m2);
+    barycenter.z = barycenter.z / (m1 + m2);
+
+    vector3 result = dvector3_to_vector3(barycenter);
+
+    return result;
+
+}
+
+// RK4 Helper Function
+// Models acceleration relative to the Center of Gravity
+[[gnu::pure]] static vector3 f_v_rel_cog(double t, vector3 self_pos, vector3 other_pos, double mass_other, double mass_self){
+
+    vector3 r_vec = subtract_vec3s(self_pos, other_pos);
+
+    double r = sqrt((r_vec.x * r_vec.x) + (r_vec.y * r_vec.y) + (r_vec.z * r_vec.z));
+
+    const float epsilon = 1e3;
+    if (r < epsilon) {
+        printf("\nObjects probably collided... Closing Simulation\n");
+        exit(0);
+    }
+
+    // Gravitational parameter μ = G * (m1 + m2)
+    double u = standard_gravitational_parameter(mass_self, mass_other);
+
+    // Acceleration vector: -(u') / r^3 * r_vec
+    double scale = (-1) * (u) / (r * r * r);
+
+    vector3 acceleration = scale_vec3(r_vec, scale);
+
+    return acceleration;
+}
+
+// RK4 function
+// Uses the center of gravity between two objects as the reference point
+void cog_ref_runge_kutta_3d(double t, double h, body_3d *body1, body_3d *body2){
+
+    // pos, vel, and mass of b1
+    vector3 x1_init = body1->pos;
+    vector3 v1_init = body1->velocity; 
+    double m1 =  body1->mass;
+
+    printf("x1 init = %f %f %f\n", x1_init.x, x1_init.y, x1_init.z);
+
+    // pos, vel, and mass of b2
+    vector3 x2_init = body2->pos;
+    vector3 v2_init = body2->velocity; 
+    double m2 =  body2->mass;
+
+
+    //frame conversion
+    vector3 v_com = {
+    (m1 * v1_init.x + m2 * v2_init.x) / (m1 + m2),
+    (m1 * v1_init.y + m2 * v2_init.y) / (m1 + m2),
+    (m1 * v1_init.z + m2 * v2_init.z) / (m1 + m2)
+    };
+
+    
+    vector3 com = find_cog(m1, x1_init, m2, x2_init);
+
+    vector3 x1 = subtract_vec3s(x1_init, com);
+    vector3 x2 = subtract_vec3s(x2_init, com);
+
+    vector3 v1 = subtract_vec3s(v1_init, v_com);
+    vector3 v2 = subtract_vec3s(v2_init, v_com);
+    printf("V1 = %f, %f, %f \n",v1.x, v1.y, v1.z);
+
+    //rk4 steps
+
+    //k1 step
+    vector3 k1_x1 = f_x(t,x1,v1); // explicit euler. equal to k1 = h * f_x
+    vector3 k1_v1 = f_v_rel_cog(t,x1,x2,m2,m1);
+    vector3 k1_x2 = f_x(t,x2,v2); 
+    vector3 k1_v2 = f_v_rel_cog(t,x2,x1,m1,m2);
+
+    //k2
+    vector3 k2_x1 = f_x(t + h * 0.5, add_vec3s(x1, scale_vec3(k1_x1, h * 0.5)), add_vec3s(v1, scale_vec3(k1_v1, h * 0.5))); //multiply by 0.5 is faster than /2
+    vector3 k2_v1 = f_v_rel_cog(t + h * 0.5, add_vec3s(x1, scale_vec3(k1_x1, h * 0.5)), add_vec3s(x2, scale_vec3(k1_x2, h * 0.5)),m2,m1);
+    vector3 k2_x2 = f_x(t + h * 0.5, add_vec3s(x2, scale_vec3(k1_x2, h * 0.5)), add_vec3s(v2, scale_vec3(k1_v2, h * 0.5))); //multiply by 0.5 is faster than /2
+    vector3 k2_v2 = f_v_rel_cog(t + h * 0.5, add_vec3s(x2, scale_vec3(k1_x2, h * 0.5)), add_vec3s(x1, scale_vec3(k1_x1, h * 0.5)),m1,m2);
+
+    vector3 k3_x1 = f_x(t + h * 0.5, add_vec3s(x1, scale_vec3(k2_x1, h * 0.5)), add_vec3s(v1, scale_vec3(k2_v1, h * 0.5)));
+    vector3 k3_v1 = f_v_rel_cog(t + h * 0.5, add_vec3s(x1, scale_vec3(k2_x1, h * 0.5)), add_vec3s(x2, scale_vec3(k2_x2, h * 0.5)),m2,m1);
+    vector3 k3_x2 = f_x(t + h * 0.5, add_vec3s(x2, scale_vec3(k2_x2, h * 0.5)), add_vec3s(v2, scale_vec3(k2_v2, h * 0.5)));
+    vector3 k3_v2 = f_v_rel_cog(t + h * 0.5, add_vec3s(x2, scale_vec3(k2_x2, h * 0.5)), add_vec3s(x1, scale_vec3(k2_x1, h * 0.5)),m1,m2);
+
+    vector3 k4_x1 = f_x(t + h, add_vec3s(x1, scale_vec3(k3_x1, h)), add_vec3s(v1, scale_vec3(k3_v1, h))); // implicit euler
+    vector3 k4_v1 = f_v_rel_cog(t + h, add_vec3s(x1, scale_vec3(k3_x1, h)), add_vec3s(x2, scale_vec3(k3_x2, h)),m2,m1);
+    vector3 k4_x2 = f_x(t + h, add_vec3s(x2, scale_vec3(k3_x2, h)), add_vec3s(v2, scale_vec3(k3_v2, h))); 
+    vector3 k4_v2 = f_v_rel_cog(t + h, add_vec3s(x2, scale_vec3(k3_x2, h)), add_vec3s(x1, scale_vec3(k3_x1, h)),m1,m2);
+
+    body1->pos = add_vec3s(x1, scale_vec3(add_4vec3s(k1_x1, scale_vec3(k2_x1, 2), scale_vec3(k3_x1, 2), k4_x1), h / 6.0));
+    body1->velocity = add_vec3s(v1, scale_vec3(add_4vec3s(k1_v1, scale_vec3(k2_v1, 2), scale_vec3(k3_v1, 2), k4_v1), h / 6.0));
+
+    body2->pos = add_vec3s(x2, scale_vec3(add_4vec3s(k1_x2, scale_vec3(k2_x2, 2), scale_vec3(k3_x2, 2), k4_x2), h / 6.0));
+    body2->velocity = add_vec3s(v2, scale_vec3(add_4vec3s(k1_v2, scale_vec3(k2_v2, 2), scale_vec3(k3_v2, 2), k4_v2), h / 6.0));
+
+    printf("body pos at end = %f %f %f\n", body1->pos.x, body1->pos.y, body1->pos.z);
 
 }

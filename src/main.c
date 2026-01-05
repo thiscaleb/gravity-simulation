@@ -111,7 +111,6 @@ int main(int argc, char **argv){
     // Maybe I should make the option to pick this filename
     parse_config_file(bodies_array_config, is_3d, NUM_BODIES);
 
-
     // Convert the generics into the proper type for rendering!
     if(is_3d){
         body_3d* bodies_array[NUM_BODIES];

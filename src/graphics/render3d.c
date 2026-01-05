@@ -7,7 +7,7 @@
 #include "physics/gravity3d.h"
 #include "utils/shaders_parser.h"
 
-vector3* drawSphere(vector3 s, float r, int NUM_SEGMENTS) {
+[[gnu::pure]] vector3* drawSphere(vector3 s, float r, int NUM_SEGMENTS) {
 
     // Center of sphere
     float cx = s.x;
@@ -210,12 +210,12 @@ void init_3d_bodies(body_3d* bodies_array[], int num_bodies){
 
         glBindVertexArray( b->vao );
         glEnableVertexAttribArray( 0 );
-        // Are doubles needed? 
+        // Doubles are needed for large values. Floats get overflown too easily
         // this is for the vertices
         glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(vector3), (void*)0);
         glEnableVertexAttribArray(1);
         // this is for the normals, used in shading
-        glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 2* sizeof(vector3), (void*)sizeof(vector3) );
+        glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(vector3), (void*)sizeof(vector3) );
 
     }
 
@@ -336,7 +336,6 @@ GLuint init_grid(grid *g){
 
 void draw_grid(grid *g, GLuint projLoc, GLuint viewLoc, GLuint modelLoc, const float* view, float* projection){
 
-
     //GLuint projLoc = glGetUniformLocation(grid_shaders, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
 
@@ -346,7 +345,6 @@ void draw_grid(grid *g, GLuint projLoc, GLuint viewLoc, GLuint modelLoc, const f
     //GLuint modelLoc = glGetUniformLocation(grid_shaders, "model");
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, identityMatrix4);
     
-
     glBindVertexArray( g->vao );
     // THE DRAW BYTES ARE HARDCODED
     glDrawArrays(GL_LINES, 0, 160000);
@@ -355,8 +353,7 @@ void draw_grid(grid *g, GLuint projLoc, GLuint viewLoc, GLuint modelLoc, const f
 
 void show_debug_message(int run, int nbFrames, body_3d* bodies_array[], int num_bodies){
 
-        // printf and reset timer
-        // debug printf statements
+        // debug statement
         printf("\nCurrent Frame = %d", run);
         printf("\n%f ms/frame", 1000.0/(double)(nbFrames));
         printf("\nFPS: %f", (double)nbFrames / 1.0);
@@ -407,18 +404,15 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
     };
 
 
-    //setup the camera
+    // Setup the camera
     camera *cam = malloc(sizeof(camera));
     vector3 cameraPosDefault = {0, 0.4f,1.5f};
     float cameraSpeedMultiplier = 1.0f;
     cam->pos = cameraPosDefault;
-    // Points the camera at the origin, since thats where the grid is
-    //vector3 cameraTarget = {0.0f, 0.0f, 0.0f}; // This is 0,0,-1 to ensure the camera faces the same way when moving
-    //vector3 cameraFront = {0.0f, 0.0f, -1.0f};
     vector3 up = {0.0f, 1.0f, 0.0f};
 
     float angle_pitch, angle_yaw;
-    angle_yaw = -90.0f; // This is yaw
+    angle_yaw = -90.0f; 
     angle_pitch = 0.0f;
 
     // Init the bodies
@@ -490,7 +484,6 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
     GLuint gridProjLoc = glGetUniformLocation(grid_shaders, "projection");
     GLuint gridViewLoc = glGetUniformLocation(grid_shaders, "view");
     GLuint gridModelLoc = glGetUniformLocation(grid_shaders, "model");
-    //GLuint gridRealPos = glGetUniformLocation(grid_shaders, "realPos");
     GLuint gridBodyRadius = glGetUniformLocation(grid_shaders, "radius");
     GLuint scharzchildLoc = glGetUniformLocation(grid_shaders, "r_s");
 
@@ -519,9 +512,7 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
         if(bodies_array[i]->type == STAR){
             numLightSources++;
         }
-
     }
-
 
     //light related arrays
     matrix4 lightModel[numLightSources];
@@ -670,11 +661,21 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
 
         glfwPollEvents();
         glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-
         glUseProgram( shaders );
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, (const GLfloat *)view);
-        rk4_nbody_3d(0, timeskip, bodies_array, num_bodies);
+
+        // This is the main equation driving the physics
+        if(ref_frame_code == 101){
+            cog_ref_runge_kutta_3d(0, timeskip, bodies_array[0], bodies_array[1]);
+
+        }else if(ref_frame_code == 200){
+            rk4_nbody_3d(0, timeskip, bodies_array, num_bodies);
+
+        }else{
+            
+            exit(1); // should never be reached
+        }
 
         for(int i=0;i<num_bodies;i++){ 
 
@@ -710,9 +711,9 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
             // Check if a body is defined as a star
             // If yes, give is an ambient strength of max and add it as a light source (iffy)
             if(b->type == STAR){
-                
                 glUniform1f(diffuseStrengthLoc, 1.0f);
                 memcpy(lightModel[i], model, sizeof(model));
+
                 // keep it always bright (like a star)
                 glUniform1f(ambientStrengthLoc, 1.0f);
                 lightLocations[i] = b_pos;        
@@ -723,22 +724,20 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
 
             // Setup obj color
             glUniform3f(objColorLoc, b->color.r, b->color.g, b->color.b);
-
             glUniform3fv(lightPos, numLightSources, (const GLfloat *)lightLocations);
             glUniformMatrix4fv(lightModelLoc, numLightSources, GL_FALSE, (const GLfloat *)lightModel);
 
             int res = bodies_array[i]->resolution;
+            
             // bytes to render. the 6 is the vertices in the quad for the sphere
             int b_render = res * res * 6; 
             glDrawArrays(GL_TRIANGLES, 0, b_render);
 
-            // Send the radius to the shader for this body
             // Used to calculate Flamm's
             glUseProgram( grid_shaders );
             glUniform1fv(gridBodyRadius, num_bodies, (const GLfloat *)grid_radius);
             glUniform1fv(scharzchildLoc, num_bodies, (const GLfloat *)grid_r_s);
 
-            
         }
 
         glUseProgram( grid_shaders );
@@ -751,8 +750,6 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
         draw_grid(g, gridProjLoc, gridViewLoc, gridModelLoc, (const GLfloat *)view, projection);
 
         glfwSwapBuffers( window );
-
-        
 
     }
     glfwDestroyWindow(window);

@@ -6,7 +6,7 @@
 #include "physics/gravity.h"
 
 // find the center of gravity from a N-body system
-vector2 find_nbody_cog(body_2d* bodies[], int num_bodies){
+static vector2 find_nbody_cog(body_2d* bodies[], int num_bodies){
     
     // sum up the mass of the bodies
     double total_m = 0;

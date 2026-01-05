@@ -11,9 +11,9 @@ Project is licensed under the [GNU Affero General Public License](https://www.gn
 - Make the orbit trails configurable
 - Add textures?
 - Make the bodies spin? (would need textures)
-- Fix the memory leaks. Especially in the YAML parser
 - Make the camera auto-track an object
 - Make the lighting dim the further you are from an object
+- I'm not entirely sure the COG frame is 100% correct. I'll need to re-review it at a later date
 
 ## Guide
 
@@ -104,8 +104,8 @@ The different keys that exist are:
 
 ### Moving the camera in 3d
 
-In 3D, we can move the camera using WASD, and Shift/Control to move along the Y-axis.
-You can rotate the scene with Q/E, I/K, and J/L
+In 3D, we can move the camera using WASD, and Space/LeftControl to move along the Y-axis.
+You can rotate the scene with I/K, and J/L
 You can adjust the speed to be 1x, 2x, or 5x by pressing 1,2, or 5 respectively.
 
 ### Known Issues
