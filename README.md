@@ -6,14 +6,14 @@ Project is licensed under the [GNU Affero General Public License](https://www.gn
 
 ## To Do
 - Add checking if init values make sense for "relative" frame
-- Black Holes? Raytracing?
+- Raytracing?
+- Allow objects to be "eaten" by black holes (Don't pause the simulation, just remove the object)
 - Make the orbit trails configurable
 - Add textures?
 - Make the bodies spin? (would need textures)
 - Fix the memory leaks. Especially in the YAML parser
 - Make the camera auto-track an object
 - Make the lighting dim the further you are from an object
-
 
 ## Guide
 

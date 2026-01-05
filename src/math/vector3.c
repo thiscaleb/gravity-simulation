@@ -41,6 +41,14 @@ vector3 subtract_vec3s(vector3 vec1, vector3 vec3){
     return difference;
 }
 
+// Equivalent to glm::normalize
+vector3 vec3_unit_vector(vector3 v){
+
+    float length_of_v = sqrt((v.x * v.x) + (v.y * v.y) + (v.z * v.z));
+    return (vector3){v.x / length_of_v, v.y / length_of_v, v.z / length_of_v};
+
+}
+
 //calculate the distance between two vec3s
 double vec3_distance_between(vector3 v1, vector3 v2){
     double r = sqrt(((v2.x - v1.x)*(v2.x - v1.x)) + ((v2.y - v1.y)*(v2.y - v1.y)) + ((v2.z - v1.z)*(v2.z - v1.z)));

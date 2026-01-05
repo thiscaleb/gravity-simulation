@@ -33,10 +33,10 @@ static vector3 f_v_nbody_3d(double t, vector3 pos_self, body_3d* bodies[], int i
 
         //prevent accel from going to infinity
         // using a dampner maybe? will look into
-        const double epsilon = 10E8;
+        const double epsilon = 10E6;
         if (r < epsilon) {
             printf("\nObject %d and object %d probably collided... Closing Simulation\n", i, index);
-            exit(0);
+            //exit(0);
         } 
 
         ddx = scale_vec3(ddx, 1 / (r * r * r));

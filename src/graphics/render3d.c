@@ -334,7 +334,7 @@ GLuint init_grid(grid *g){
     return grid_shaders;
 }
 
-void draw_grid(grid *g, GLuint projLoc, GLuint viewLoc, GLuint modelLoc, float* view, float* projection){
+void draw_grid(grid *g, GLuint projLoc, GLuint viewLoc, GLuint modelLoc, const float* view, float* projection){
 
 
     //GLuint projLoc = glGetUniformLocation(grid_shaders, "projection");
@@ -409,16 +409,17 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
 
     //setup the camera
     camera *cam = malloc(sizeof(camera));
-    vector3 camera_pos = {0,-0.3f,-1.1f};
-    cam->pos = camera_pos;
-    const float cameraSpeedDefault = 0.000005f; 
-    float cameraSpeed = cameraSpeedDefault;
+    vector3 cameraPosDefault = {0, 0.4f,1.5f};
+    float cameraSpeedMultiplier = 1.0f;
+    cam->pos = cameraPosDefault;
+    // Points the camera at the origin, since thats where the grid is
+    //vector3 cameraTarget = {0.0f, 0.0f, 0.0f}; // This is 0,0,-1 to ensure the camera faces the same way when moving
+    //vector3 cameraFront = {0.0f, 0.0f, -1.0f};
+    vector3 up = {0.0f, 1.0f, 0.0f};
 
-    const float cameraRotSpeedDefault = 0.002f;
-    float cameraRotSpeed = cameraRotSpeedDefault;
-
-    float angle_x, angle_y, angle_z;
-    angle_x = angle_y = angle_z = 0.0f;
+    float angle_pitch, angle_yaw;
+    angle_yaw = -90.0f; // This is yaw
+    angle_pitch = 0.0f;
 
     // Init the bodies
     init_3d_bodies(bodies_array, num_bodies);
@@ -442,7 +443,9 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
     float grid_r_s[num_bodies];
     float grid_radius[num_bodies];
 
-    double lastTime = glfwGetTime();
+    double lastTime = glfwGetTime(); // Time of the last debug message
+    float lastFrame = 0.0f; // Time of the last frame
+    float deltaTime = 0.0f;	// Time between current frame and last frame
     int nbFrames = 0;
     int run = 0;
 
@@ -531,120 +534,138 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
         run++;
         // Frame timer
         double currentTime = glfwGetTime();
+        deltaTime = currentTime - lastFrame;
+        lastFrame = currentTime;  
         if ( currentTime - lastTime >= 1.0 && debug){ // If last prinf() was more than 1 sec ago
             show_debug_message(run, nbFrames, bodies_array, num_bodies);
             lastTime += 1.0;
             nbFrames = 0;
         }
 
+        float yaw = angle_yaw * 3.14159f / 180.0f;
+        float pitch = angle_pitch * 3.14159f / 180.0f;
+
+        // This is used to handle rotation of the camera
+        vector3 direction;
+        direction.x = cos(yaw) * cos(pitch);
+        direction.y = sin(pitch);
+        direction.z = sin(yaw) * cos(pitch);
+        vector3 cameraFront = vec3_unit_vector(direction);
+
+        // These are the steps to calculte the vectors needed for a lookAt matrix
+        vector3 cameraTarget = add_vec3s(cameraFront, cam->pos);
+        vector3 cameraDirection = vec3_unit_vector(subtract_vec3s(cam->pos, cameraTarget));
+        vector3 cameraRight = vec3_unit_vector(cross_product(up, cameraDirection));
+        vector3 cameraUp = cross_product(cameraDirection, cameraRight);
+
+        float cameraSpeed = 0.3f * deltaTime * cameraSpeedMultiplier; 
+        float cameraRotSpeed = 2.5f * deltaTime * cameraSpeedMultiplier;
+
         if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
             glfwSetWindowShouldClose(window, true);
         }
 
-
         // move camera forward / back
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
-            cam->pos.z += cameraSpeed; 
+            cam->pos = add_vec3s(cam->pos, scale_vec3(cameraFront, cameraSpeed));
         }
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
-            cam->pos.z -= cameraSpeed; 
+            cam->pos = add_vec3s(cam->pos, scale_vec3(cameraFront, (-1) * cameraSpeed));
         }
         // move camera left / right
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
-            cam->pos.x += cameraSpeed; 
+            // Splitting this into two lines to make it a bit cleaner
+            vector3 temp = vec3_unit_vector(cross_product(cameraFront, cameraUp)); 
+            cam->pos = add_vec3s(cam->pos, scale_vec3(temp, (-1) * cameraSpeed));
         }
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
-            cam->pos.x -= cameraSpeed; 
+            vector3 temp = vec3_unit_vector(cross_product(cameraFront, cameraUp)); 
+            cam->pos = add_vec3s(cam->pos, scale_vec3(temp, cameraSpeed));    
         }
         // move cam up
-        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS){
-            cam->pos.y -= cameraSpeed; 
+        if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS){
+            cam->pos = add_vec3s(cam->pos, scale_vec3(cameraUp, (-1) * cameraSpeed));
         }
         // move cam down
-        if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS){
-            cam->pos.y += cameraSpeed; 
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS){
+            cam->pos = add_vec3s(cam->pos, scale_vec3(cameraUp, cameraSpeed));
         }
 
         // x rotation
         if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS){
-            angle_x += cameraRotSpeed;
+            angle_pitch -= cameraRotSpeed;
+            
         }
         if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS){
-            angle_x -= cameraRotSpeed; 
+            angle_pitch += cameraRotSpeed; 
         }
 
         // y rotation
         if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS){
-            angle_y += cameraRotSpeed; 
+            angle_yaw -= cameraRotSpeed; 
         }
         if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS){
-            angle_y -= cameraRotSpeed; 
-        }
-
-        // this rotates along z axis
-        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS){
-            angle_z += cameraRotSpeed; 
-        }
-        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS){
-            angle_z -= cameraRotSpeed; 
+            angle_yaw += cameraRotSpeed; 
         }
 
         // this adjusts the camera speed
         if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS){
 
             //Prevent the print statement from popping up hundreds of time per press
-            if(cameraSpeed != cameraSpeedDefault){
-                cameraSpeed = cameraSpeedDefault;
-                cameraRotSpeed = cameraRotSpeedDefault;
-                puts("Camera speed set to 1x");
+            if(cameraSpeedMultiplier != 1){
+                cameraSpeedMultiplier = 1;
+                puts("\nCamera speed set to 1x");
             }
         }
         // 2x speed
         if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS){
 
             //Prevent the print statement from popping up hundreds of time per press
-            if(cameraSpeed != cameraSpeedDefault * 2){
-                cameraSpeed = cameraSpeedDefault * 2;
-                cameraRotSpeed = cameraRotSpeedDefault * 2;
-                puts("Camera speed set to 2x");
+            if(cameraSpeedMultiplier != 2){
+                cameraSpeedMultiplier = 2;
+                puts("\nCamera speed set to 2x");
             }
         }
         // 5x speed
         if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS){
             //Prevent the print statement from popping up hundreds of time per press
-            if(cameraSpeed != cameraSpeedDefault * 5){
-                cameraSpeed = cameraSpeedDefault * 5;
-                cameraRotSpeed = cameraRotSpeedDefault * 5;
-                puts("Camera speed set to 5x");
+            if(cameraSpeedMultiplier != 5){
+                cameraSpeedMultiplier = 5;
+                puts("\nCamera speed set to 5x");
             }
         }
 
-        // Jump to a body (useful on larger scales when stuff is small)
+        //Jump to a body (useful on larger scales when stuff is small)
+        // I'll need to edit the lookAt matrix to make the camera look at the object
         if (glfwGetKey(window, GLFW_KEY_UP)){
             cam->pos = normalize_vec3(bodies_array[1]->pos, SPACE_MIN, SPACE_MAX);
-            printf("CAM POS X = %f\n\n", cam->pos.x);
-
+            cam->pos.x = cam->pos.x + 0.01f;
+            cam ->pos.y = cam->pos.y + 0.01f;
         }
 
-        float cx = cos(angle_x * 3.14159f / 180.0f);
-        float sx = sin(angle_x * 3.14159f / 180.0f);
-        float cy = cos(angle_y * 3.14159f / 180.0f);
-        float sy = sin(angle_y * 3.14159f / 180.0f);
-        float cz = cos(angle_z * 3.14159f / 180.0f);
-        float sz = sin(angle_z * 3.14159f / 180.0f);
+        // reset camera to init
+        if (glfwGetKey(window, GLFW_KEY_R)){
+            cam->pos = cameraPosDefault;
+            // Also need to reset the rotation
+            angle_pitch = 0.0f;
+            angle_yaw = -90.0f;
+        }
 
-        float x = cam->pos.x;
-        float y = cam->pos.y;
-        float z = cam->pos.z;
+        // Don't let the user's flip the camera over, it breaks things
+        if(angle_pitch > 89.0f)
+            angle_pitch =  89.0f;
+        if(angle_pitch < -89.0f)
+            angle_pitch = -89.0f;
 
-        // full x,y,z rotation matrix
-        // this isn't actually a good way to do this, has many issues
-        // should fix this 
-        float view[16] = {
-            cz * cy, -sz, -sy, 0,
-            sz, cx * cz, sx, 0,
-            sy, -sx, cx * cy, 0,
-            x, y, z, 1,
+        // View  Rotation Matrix Matrix
+        matrix4 view = {
+            {cameraRight.x, cameraUp.x, cameraDirection.x, 0},
+            {cameraRight.y, cameraUp.y, cameraDirection.y, 0},
+            {cameraRight.z, cameraUp.z, cameraDirection.z, 0},
+            {   (-1) * dot_vec3s(cameraRight, cam->pos),
+                (-1) * dot_vec3s(cameraUp, cam->pos),
+                (-1) * dot_vec3s(cameraDirection, cam->pos)
+                ,1}
         };
 
         glfwPollEvents();
@@ -652,7 +673,7 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
 
         glUseProgram( shaders );
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view);
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, (const GLfloat *)view);
         rk4_nbody_3d(0, timeskip, bodies_array, num_bodies);
 
         for(int i=0;i<num_bodies;i++){ 
@@ -727,7 +748,8 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
         glUniform3fv(gridPosLoc, num_bodies, (const GLfloat *)planetGridPos);
         glUniform1fv(warpLoc, num_bodies, (const GLfloat *)warp);
 
-        draw_grid(g, gridProjLoc, gridViewLoc, gridModelLoc, view, projection);
+        draw_grid(g, gridProjLoc, gridViewLoc, gridModelLoc, (const GLfloat *)view, projection);
+
         glfwSwapBuffers( window );
 
         
