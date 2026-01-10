@@ -307,11 +307,20 @@ void cog_ref_runge_kutta(double t, double h, body_2d *body1, body_2d *body2){
 
 
 
-    body1->pos = add_vec2s(x1, scale_vec2(add_4vec2s(k1_x1, scale_vec2(k2_x1, 2), scale_vec2(k3_x1, 2), k4_x1), h / 6.0));
-    body1->velocity = add_vec2s(v1, scale_vec2(add_4vec2s(k1_v1, scale_vec2(k2_v1, 2), scale_vec2(k3_v1, 2), k4_v1), h / 6.0));
+    vector2 x1_final = add_vec2s(x1, scale_vec2(add_4vec2s(k1_x1, scale_vec2(k2_x1, 2), scale_vec2(k3_x1, 2), k4_x1), h / 6.0));
+    vector2 v1_final = add_vec2s(v1, scale_vec2(add_4vec2s(k1_v1, scale_vec2(k2_v1, 2), scale_vec2(k3_v1, 2), k4_v1), h / 6.0));
 
-    body2->pos = add_vec2s(x2, scale_vec2(add_4vec2s(k1_x2, scale_vec2(k2_x2, 2), scale_vec2(k3_x2, 2), k4_x2), h / 6.0));
-    body2->velocity = add_vec2s(v2, scale_vec2(add_4vec2s(k1_v2, scale_vec2(k2_v2, 2), scale_vec2(k3_v2, 2), k4_v2), h / 6.0));
+    vector2 x2_final = add_vec2s(x2, scale_vec2(add_4vec2s(k1_x2, scale_vec2(k2_x2, 2), scale_vec2(k3_x2, 2), k4_x2), h / 6.0));
+    vector2 v2_final = add_vec2s(v2, scale_vec2(add_4vec2s(k1_v2, scale_vec2(k2_v2, 2), scale_vec2(k3_v2, 2), k4_v2), h / 6.0));
+
+    // Converting back into world units
+    // Otherwise the visuals are incorrect, and we'll "re-convert" to COG on the next loop
+    body1->pos = add_vec2s(x1_final, com);
+    body1->velocity = add_vec2s(v1_final, v_com);
+
+    body2->pos = add_vec2s(x2_final, com);
+    body2->velocity = add_vec2s(v2_final, v_com);
+
 
 }
 

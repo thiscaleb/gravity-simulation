@@ -1,4 +1,5 @@
 # Inner Planets Mockup
+# Run this in 3D, 2D will fail
 bodies:
   - Name: Sun
     Mass: 1.989E30

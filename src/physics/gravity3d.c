@@ -236,11 +236,24 @@ void cog_ref_runge_kutta_3d(double t, double h, body_3d *body1, body_3d *body2){
     vector3 k4_x2 = f_x(t + h, add_vec3s(x2, scale_vec3(k3_x2, h)), add_vec3s(v2, scale_vec3(k3_v2, h))); 
     vector3 k4_v2 = f_v_rel_cog(t + h, add_vec3s(x2, scale_vec3(k3_x2, h)), add_vec3s(x1, scale_vec3(k3_x1, h)),m1,m2);
 
-    body1->pos = add_vec3s(x1, scale_vec3(add_4vec3s(k1_x1, scale_vec3(k2_x1, 2), scale_vec3(k3_x1, 2), k4_x1), h / 6.0));
-    body1->velocity = add_vec3s(v1, scale_vec3(add_4vec3s(k1_v1, scale_vec3(k2_v1, 2), scale_vec3(k3_v1, 2), k4_v1), h / 6.0));
+    // body1->pos = add_vec3s(x1, scale_vec3(add_4vec3s(k1_x1, scale_vec3(k2_x1, 2), scale_vec3(k3_x1, 2), k4_x1), h / 6.0));
+    // body1->velocity = add_vec3s(v1, scale_vec3(add_4vec3s(k1_v1, scale_vec3(k2_v1, 2), scale_vec3(k3_v1, 2), k4_v1), h / 6.0));
 
-    body2->pos = add_vec3s(x2, scale_vec3(add_4vec3s(k1_x2, scale_vec3(k2_x2, 2), scale_vec3(k3_x2, 2), k4_x2), h / 6.0));
-    body2->velocity = add_vec3s(v2, scale_vec3(add_4vec3s(k1_v2, scale_vec3(k2_v2, 2), scale_vec3(k3_v2, 2), k4_v2), h / 6.0));
+    // body2->pos = add_vec3s(x2, scale_vec3(add_4vec3s(k1_x2, scale_vec3(k2_x2, 2), scale_vec3(k3_x2, 2), k4_x2), h / 6.0));
+    // body2->velocity = add_vec3s(v2, scale_vec3(add_4vec3s(k1_v2, scale_vec3(k2_v2, 2), scale_vec3(k3_v2, 2), k4_v2), h / 6.0));
+
+    vector3 x1_final = add_vec3s(x1, scale_vec3(add_4vec3s(k1_x1, scale_vec3(k2_x1, 2), scale_vec3(k3_x1, 2), k4_x1), h / 6.0));
+    vector3 v1_final = add_vec3s(v1, scale_vec3(add_4vec3s(k1_v1, scale_vec3(k2_v1, 2), scale_vec3(k3_v1, 2), k4_v1), h / 6.0));
+
+    vector3 x2_final = add_vec3s(x2, scale_vec3(add_4vec3s(k1_x2, scale_vec3(k2_x2, 2), scale_vec3(k3_x2, 2), k4_x2), h / 6.0));
+    vector3 v2_final = add_vec3s(v2, scale_vec3(add_4vec3s(k1_v2, scale_vec3(k2_v2, 2), scale_vec3(k3_v2, 2), k4_v2), h / 6.0));
+
+    // Convert back into world frame
+    body1->pos = add_vec3s(x1_final, com);
+    body2->pos = add_vec3s(x2_final, com);
+
+    body1->velocity = add_vec3s(v1_final, v_com);
+    body2->velocity = add_vec3s(v2_final, v_com);
 
 
 }
