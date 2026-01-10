@@ -17,5 +17,5 @@ const double mass_sagA = 8.5E36;
 // should be configurable
 // const double SPACE_MIN = -1.5 * AU * 2;
 // const double SPACE_MAX = 1.5 * AU * 2; 
-const double SPACE_MIN = -AU * 3;
-const double SPACE_MAX = AU * 3;
+const double SPACE_MIN = -AU * 1;
+const double SPACE_MAX = AU * 1;

@@ -4,6 +4,10 @@ Using the equations from [here](https://orbital-mechanics.space) as a guide.
 
 Project is licensed under the [GNU Affero General Public License](https://www.gnu.org/licenses/agpl-3.0.en.html#license-text).
 
+![Two Black Holes](misc/images/two-black-holes.png, "Two Black Holes")
+![2D Sun and Earth](misc/images/2d-sun-earth.png, "Earth orbiting the sun in 2D")
+![3D Planet Orbiting Star](misc/images/3d-planet-orbiting.png, "3D Planet Orbiting a star")
+
 ## To Do
 - Add checking if init values make sense for "relative" frame
 - Raytracing?
@@ -110,3 +114,5 @@ You can adjust the speed to be 1x, 2x, or 5x by pressing 1,2, or 5 respectively.
 
 ### Known Issues
 - Compiling with an optimization setting higher than -O0 can cause crashes on Nvidia GPUs
+
+
