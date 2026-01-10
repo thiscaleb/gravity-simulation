@@ -1,13 +1,13 @@
+#include <string.h>
 #include "graphics/render3d.h"
+#include "math/math_funcs.h"
 #include "math/vector/vector3.h"
 #include "math/vector/vector4.h"
 #include "math/matrix/matrix4.h"
 #include "physics/gravity3d.h"
-#include "math/math_funcs.h"
 #include "utils/shaders_parser.h"
-#include <string.h>
 
-vector3* drawSphere(vector3 s, float r, int NUM_SEGMENTS) {
+[[gnu::pure]] vector3* drawSphere(vector3 s, float r, int NUM_SEGMENTS) {
 
     // Center of sphere
     float cx = s.x;
@@ -210,12 +210,12 @@ void init_3d_bodies(body_3d* bodies_array[], int num_bodies){
 
         glBindVertexArray( b->vao );
         glEnableVertexAttribArray( 0 );
-        // Are doubles needed? Could I use floats for faster processing??
+        // Doubles are needed for large values. Floats get overflown too easily
         // this is for the vertices
         glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(vector3), (void*)0);
         glEnableVertexAttribArray(1);
         // this is for the normals, used in shading
-        glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 2* sizeof(vector3), (void*)sizeof(vector3) );
+        glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(vector3), (void*)sizeof(vector3) );
 
     }
 
@@ -240,12 +240,12 @@ GLuint init_grid(grid *g){
     // x and z define the bounds to draw
     // y is hardcoded to 0 as the reference point
     // CHANGING THESE REQUIRES A MANUAL CHANGE TO glDrawArrays() in draw_grid!
-    float step = 0.05f;
+    float step = 0.01f;
 
-    float x_init = -4.0f;
-    float z_init = -4.0f;
+    float x_init = -1.0f;
+    float z_init = -1.0f;
 
-    int rows = (int)ceilf((fabsf(x_init) + fabsf(x_init)) / step);
+    int rows = (int)ceilf((fabsf(x_init) + fabsf(z_init)) / step);
 
     int vertices = (2 * rows * rows) * 2;
 
@@ -254,9 +254,9 @@ GLuint init_grid(grid *g){
     int index = 0;
 
     for(int i=0; i < rows; i++){ 
-        float x = x_init + i * step;
+        float x = x_init + (i * step);
         for(int j=0; j < rows; j++){
-            float z = z_init + j * step;
+            float z = z_init + (j * step);
             points[index++] = (vector3){ x, 0.0f, z};
             z = z + step;
             points[index++] = (vector3){ x, 0.0f, z};
@@ -264,9 +264,9 @@ GLuint init_grid(grid *g){
     }
 
     for(int i=0; i < rows; i++){ 
-        float z = z_init + i * step;
+        float z = z_init + (i * step);
         for(int j=0; j < rows; j++){
-            float x = x_init + j * step;
+            float x = x_init + (j * step);
             points[index++] = (vector3){ x, 0.0f, z};
             x = x + step;
             points[index++] = (vector3){ x, 0.0f, z};
@@ -334,8 +334,7 @@ GLuint init_grid(grid *g){
     return grid_shaders;
 }
 
-void draw_grid(grid *g, GLuint projLoc, GLuint viewLoc, GLuint modelLoc, float* view, float* projection){
-
+void draw_grid(grid *g, GLuint projLoc, GLuint viewLoc, GLuint modelLoc, const float* view, float* projection){
 
     //GLuint projLoc = glGetUniformLocation(grid_shaders, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
@@ -346,17 +345,15 @@ void draw_grid(grid *g, GLuint projLoc, GLuint viewLoc, GLuint modelLoc, float* 
     //GLuint modelLoc = glGetUniformLocation(grid_shaders, "model");
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, identityMatrix4);
     
-
     glBindVertexArray( g->vao );
     // THE DRAW BYTES ARE HARDCODED
-    glDrawArrays(GL_LINES, 0, 512000);
+    glDrawArrays(GL_LINES, 0, 160000);
 
 }
 
 void show_debug_message(int run, int nbFrames, body_3d* bodies_array[], int num_bodies){
 
-        // printf and reset timer
-        // debug printf statements
+        // debug statement
         printf("\nCurrent Frame = %d", run);
         printf("\n%f ms/frame", 1000.0/(double)(nbFrames));
         printf("\nFPS: %f", (double)nbFrames / 1.0);
@@ -407,18 +404,16 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
     };
 
 
-    //setup the camera
+    // Setup the camera
     camera *cam = malloc(sizeof(camera));
-    vector3 camera_pos = {0,-0.3f,-5};
-    cam->pos = camera_pos;
-    const float cameraSpeedDefault = 0.00005f; 
-    float cameraSpeed = cameraSpeedDefault;
+    vector3 cameraPosDefault = {0, 0.4f,1.5f};
+    float cameraSpeedMultiplier = 1.0f;
+    cam->pos = cameraPosDefault;
+    vector3 up = {0.0f, 1.0f, 0.0f};
 
-    const float cameraRotSpeedDefault = 0.002f;
-    float cameraRotSpeed = cameraRotSpeedDefault;
-
-    float angle_x, angle_y, angle_z;
-    angle_x = angle_y = angle_z = 0.0f;
+    float angle_pitch, angle_yaw;
+    angle_yaw = -90.0f; 
+    angle_pitch = 0.0f;
 
     // Init the bodies
     init_3d_bodies(bodies_array, num_bodies);
@@ -442,167 +437,245 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
     float grid_r_s[num_bodies];
     float grid_radius[num_bodies];
 
+    double lastTime = glfwGetTime(); // Time of the last debug message
+    float lastFrame = 0.0f; // Time of the last frame
+    float deltaTime = 0.0f;	// Time between current frame and last frame
+    int nbFrames = 0;
+    int run = 0;
+
+    glUseProgram( shaders );
+    // get the uniform locations
+    // the model view and projection of the bodies
+    GLuint modelLoc = glGetUniformLocation(shaders, "model");
+    if (modelLoc == -1){
+        printf("failed to get model from shader\n");
+    }
+
+    GLuint projLoc = glGetUniformLocation(shaders, "projection");
+    GLuint viewLoc = glGetUniformLocation(shaders, "view");
+    
+    /// Lighting-related uniforms
+    GLuint ambientStrengthLoc = glGetUniformLocation(shaders, "ambientStrength");
+    if(ambientStrengthLoc == -1){
+        printf("failed to get ambientStrength uniform\n");
+    }
+
+    GLuint diffuseStrengthLoc = glGetUniformLocation(shaders, "diffuseStrength");
+    GLuint lightModelLoc = glGetUniformLocation(shaders, "lightModel");
+    if(lightModelLoc == -1){
+        printf("failed to get lightModel uniform\n");
+    }
+    GLuint objColorLoc = glGetUniformLocation(shaders, "objectColor");
+    if(objColorLoc == -1){
+        printf("failed to get objectColor uniform\n");
+    }
+    // Set the pos of the diffuse light
+    GLuint lightPos = glGetUniformLocation(shaders, "lightPos");
+    if(lightPos == -1){
+        printf("Failed to get uniform lightPos\n");
+    }
+
+    GLuint numLightSourcesLoc = glGetUniformLocation(shaders, "numLightSources");
+    if(numLightSourcesLoc == -1){
+        printf("Failed to get uniform lightPos\n");
+    }
+
+    // get the grid shader uniform locations
+    GLuint gridProjLoc = glGetUniformLocation(grid_shaders, "projection");
+    GLuint gridViewLoc = glGetUniformLocation(grid_shaders, "view");
+    GLuint gridModelLoc = glGetUniformLocation(grid_shaders, "model");
+    GLuint gridBodyRadius = glGetUniformLocation(grid_shaders, "radius");
+    GLuint scharzchildLoc = glGetUniformLocation(grid_shaders, "r_s");
+
+    // Magnitude is used to amplify Flamm's paraboloid, since for most objects (like the sun)
+    // the curvature is so small it cannot be seen
+    GLuint magnitudeLoc = glGetUniformLocation(grid_shaders, "magnitude");
+    if(magnitudeLoc == -1){
+        printf("Failed to get uniform magnitude\n");
+    }
+
+    // This gets added to in the init bodies loop below
+    int numLightSources = 0;
 
     // This is sorta-temp code while I figure out how I want to do the translations long-term
     vector3 init_bodies_pos[num_bodies];
     for(int i=0; i < num_bodies; i++){
 
         init_bodies_pos[i] = bodies_array[i]->pos;
-        grid_r_s[i] = normalize(scharzchild_radius(bodies_array[i]->mass), 0, SPACE_MAX);
+        grid_r_s[i] = normalize(scharzchild_radius(bodies_array[i]->mass), 0, SPACE_MAX/2);
         grid_radius[i] = normalize(bodies_array[i]->radius, 0, SPACE_MAX);
-        printf("Schwarzchild Radius of %d = %f, Noramlized = %f\n", i+1, scharzchild_radius(bodies_array[i]->mass), grid_r_s[i]);
+        
+        printf("Schwarzchild Radius of %d = %f, Normalized = %.8lf\n", i+1, scharzchild_radius(bodies_array[i]->mass), grid_r_s[i]);
+        printf("Normalized Radius = %f\n", grid_radius[i]);
 
+        // Checking to see if the body is a star, and adding to numLightSources if it is
+        if(bodies_array[i]->type == STAR){
+            numLightSources++;
+        }
     }
 
-    double lastTime = glfwGetTime();
-    int nbFrames = 0;
-    int run = 0;
-    matrix4 lightModel;
+    //light related arrays
+    matrix4 lightModel[numLightSources];
+    vector3 lightLocations[numLightSources]; 
 
-    glUseProgram( shaders );
-    // get the uniform locations
-    // the model view and projection of the bodies
-    GLuint modelLoc = glGetUniformLocation(shaders, "model");
-    GLuint projLoc = glGetUniformLocation(shaders, "projection");
-    GLuint viewLoc = glGetUniformLocation(shaders, "view");
-    ///
-    GLuint ambientStrengthLoc = glGetUniformLocation(shaders, "ambientStrength");
-    GLuint diffuseStrengthLoc = glGetUniformLocation(shaders, "diffuseStrength");
-    GLuint lightModelLoc = glGetUniformLocation(shaders, "lightModel");
-    if(lightModelLoc == -1){
-        printf("failed to get lightModel uniform");
-    }
-    GLuint objColorLoc = glGetUniformLocation(shaders, "objectColor");
-    // Set the pos of the diffuse light
-    GLuint lightPos = glGetUniformLocation(shaders, "lightPos");
-    if(lightPos == -1){
-        printf("Failed to get uniform lightPos");
-    }
+    glUniform1i(numLightSourcesLoc, numLightSources);
 
-    // There actually just shouldn't be a light source if theres no stars
-    glUniform3f(lightPos, 0.0f, 0.0f, 0.0f);
-
-    // get the grid shader uniform locations
-    GLuint gridProjLoc = glGetUniformLocation(grid_shaders, "projection");
-    GLuint gridViewLoc = glGetUniformLocation(grid_shaders, "view");
-    GLuint gridModelLoc = glGetUniformLocation(grid_shaders, "model");
-    //GLuint gridRealPos = glGetUniformLocation(grid_shaders, "realPos");
-    GLuint gridBodyRadius = glGetUniformLocation(grid_shaders, "radius");
-    GLuint scharzchildLoc = glGetUniformLocation(grid_shaders, "r_s");
-
-
-    
     while ( !glfwWindowShouldClose( window ) ) {
         nbFrames++;
         run++;
         // Frame timer
         double currentTime = glfwGetTime();
+        deltaTime = currentTime - lastFrame;
+        lastFrame = currentTime;  
         if ( currentTime - lastTime >= 1.0 && debug){ // If last prinf() was more than 1 sec ago
             show_debug_message(run, nbFrames, bodies_array, num_bodies);
             lastTime += 1.0;
             nbFrames = 0;
         }
 
+        float yaw = angle_yaw * 3.14159f / 180.0f;
+        float pitch = angle_pitch * 3.14159f / 180.0f;
+
+        // This is used to handle rotation of the camera
+        vector3 direction;
+        direction.x = cos(yaw) * cos(pitch);
+        direction.y = sin(pitch);
+        direction.z = sin(yaw) * cos(pitch);
+        vector3 cameraFront = vec3_unit_vector(direction);
+
+        // These are the steps to calculte the vectors needed for a lookAt matrix
+        vector3 cameraTarget = add_vec3s(cameraFront, cam->pos);
+        vector3 cameraDirection = vec3_unit_vector(subtract_vec3s(cam->pos, cameraTarget));
+        vector3 cameraRight = vec3_unit_vector(cross_product(up, cameraDirection));
+        vector3 cameraUp = cross_product(cameraDirection, cameraRight);
+
+        float cameraSpeed = 0.3f * deltaTime * cameraSpeedMultiplier; 
+        float cameraRotSpeed = 2.5f * deltaTime * cameraSpeedMultiplier;
+
         if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
             glfwSetWindowShouldClose(window, true);
         }
 
-
         // move camera forward / back
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
-            cam->pos.z += cameraSpeed; 
+            cam->pos = add_vec3s(cam->pos, scale_vec3(cameraFront, cameraSpeed));
         }
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
-            cam->pos.z -= cameraSpeed; 
+            cam->pos = add_vec3s(cam->pos, scale_vec3(cameraFront, (-1) * cameraSpeed));
         }
         // move camera left / right
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
-            cam->pos.x += cameraSpeed; 
+            // Splitting this into two lines to make it a bit cleaner
+            vector3 temp = vec3_unit_vector(cross_product(cameraFront, cameraUp)); 
+            cam->pos = add_vec3s(cam->pos, scale_vec3(temp, (-1) * cameraSpeed));
         }
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
-            cam->pos.x -= cameraSpeed; 
+            vector3 temp = vec3_unit_vector(cross_product(cameraFront, cameraUp)); 
+            cam->pos = add_vec3s(cam->pos, scale_vec3(temp, cameraSpeed));    
         }
         // move cam up
-        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS){
-            cam->pos.y -= cameraSpeed; 
+        if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS){
+            cam->pos = add_vec3s(cam->pos, scale_vec3(cameraUp, (-1) * cameraSpeed));
         }
         // move cam down
-        if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS){
-            cam->pos.y += cameraSpeed; 
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS){
+            cam->pos = add_vec3s(cam->pos, scale_vec3(cameraUp, cameraSpeed));
         }
 
         // x rotation
         if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS){
-            angle_x += cameraRotSpeed;
+            angle_pitch -= cameraRotSpeed;
+            
         }
         if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS){
-            angle_x -= cameraRotSpeed; 
+            angle_pitch += cameraRotSpeed; 
         }
 
         // y rotation
         if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS){
-            angle_y += cameraRotSpeed; 
+            angle_yaw -= cameraRotSpeed; 
         }
         if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS){
-            angle_y -= cameraRotSpeed; 
-        }
-
-        // this rotates along z axis
-        if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS){
-            angle_z += cameraRotSpeed; 
-        }
-        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS){
-            angle_z -= cameraRotSpeed; 
+            angle_yaw += cameraRotSpeed; 
         }
 
         // this adjusts the camera speed
         if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS){
-            cameraSpeed = cameraSpeedDefault;
-            cameraRotSpeed = cameraRotSpeedDefault;
-            puts("Camera speed set to 1x");
+
+            //Prevent the print statement from popping up hundreds of time per press
+            if(cameraSpeedMultiplier != 1){
+                cameraSpeedMultiplier = 1;
+                puts("\nCamera speed set to 1x");
+            }
         }
         // 2x speed
         if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS){
-            cameraSpeed = cameraSpeedDefault * 2;
-            cameraRotSpeed = cameraRotSpeedDefault * 2;
-            puts("Camera speed set to 2x");
+
+            //Prevent the print statement from popping up hundreds of time per press
+            if(cameraSpeedMultiplier != 2){
+                cameraSpeedMultiplier = 2;
+                puts("\nCamera speed set to 2x");
+            }
         }
         // 5x speed
         if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS){
-            cameraSpeed = cameraSpeedDefault * 5;
-            cameraRotSpeed = cameraRotSpeedDefault * 5;
-            puts("Camera speed set to 5x");
+            //Prevent the print statement from popping up hundreds of time per press
+            if(cameraSpeedMultiplier != 5){
+                cameraSpeedMultiplier = 5;
+                puts("\nCamera speed set to 5x");
+            }
         }
 
-        float cx = cos(angle_x * 3.14159f / 180.0f);
-        float sx = sin(angle_x * 3.14159f / 180.0f);
-        float cy = cos(angle_y * 3.14159f / 180.0f);
-        float sy = sin(angle_y * 3.14159f / 180.0f);
-        float cz = cos(angle_z * 3.14159f / 180.0f);
-        float sz = sin(angle_z * 3.14159f / 180.0f);
+        //Jump to a body (useful on larger scales when stuff is small)
+        // I'll need to edit the lookAt matrix to make the camera look at the object
+        if (glfwGetKey(window, GLFW_KEY_UP)){
+            cam->pos = normalize_vec3(bodies_array[1]->pos, SPACE_MIN, SPACE_MAX);
+            cam->pos.x = cam->pos.x + 0.01f;
+            cam ->pos.y = cam->pos.y + 0.01f;
+        }
 
-        float x = cam->pos.x;
-        float y = cam->pos.y;
-        float z = cam->pos.z;
+        // reset camera to init
+        if (glfwGetKey(window, GLFW_KEY_R)){
+            cam->pos = cameraPosDefault;
+            // Also need to reset the rotation
+            angle_pitch = 0.0f;
+            angle_yaw = -90.0f;
+        }
 
-        // full x,y,z rotation matrix
-        // this isn't actually a good way to do this, has many issues
-        // should fix this 
-        float view[16] = {
-            cz * cy, -sz, -sy, 0,
-            sz, cx * cz, sx, 0,
-            sy, -sx, cx * cy, 0,
-            x, y, z, 1,
+        // Don't let the user's flip the camera over, it breaks things
+        if(angle_pitch > 89.0f)
+            angle_pitch =  89.0f;
+        if(angle_pitch < -89.0f)
+            angle_pitch = -89.0f;
+
+        // View  Rotation Matrix Matrix
+        matrix4 view = {
+            {cameraRight.x, cameraUp.x, cameraDirection.x, 0},
+            {cameraRight.y, cameraUp.y, cameraDirection.y, 0},
+            {cameraRight.z, cameraUp.z, cameraDirection.z, 0},
+            {   (-1) * dot_vec3s(cameraRight, cam->pos),
+                (-1) * dot_vec3s(cameraUp, cam->pos),
+                (-1) * dot_vec3s(cameraDirection, cam->pos)
+                ,1}
         };
-
 
         glfwPollEvents();
         glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
-
         glUseProgram( shaders );
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, view);
-        rk4_nbody_3d(0, timeskip, bodies_array, num_bodies);
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, (const GLfloat *)view);
+
+        // This is the main equation driving the physics
+        if(ref_frame_code == 101){
+            cog_ref_runge_kutta_3d(0, timeskip, bodies_array[0], bodies_array[1]);
+
+        }else if(ref_frame_code == 200){
+            rk4_nbody_3d(0, timeskip, bodies_array, num_bodies);
+
+        }else{
+            
+            exit(1); // should never be reached
+        }
 
         for(int i=0;i<num_bodies;i++){ 
 
@@ -610,79 +683,72 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
 
             body_3d *b = bodies_array[i];
 
+            // Normalized translation of body (difference from init position to current one)
+            // This is used for the model translation
             vector3 n_pos = normalize_vec3(subtract_vec3s(bodies_array[i]->pos,init_bodies_pos[i]), SPACE_MIN, SPACE_MAX);
 
+            // Normalized Positions of the bodies
             vector3 b_pos = normalize_vec3(b->pos, SPACE_MIN, SPACE_MAX);
 
             //glUniform3f(gridRealPos, n_pos.x, n_pos.y, n_pos.z);
-
-            // this is SLOW AS FUCK.... but proves my concept atleast so yay
-            // EXPERIMENTAL GRID FEAT
            
-            vector3 n_pos_grid = { roundf(b_pos.x * 20.0f)/20.0f, 0.0f, roundf(b_pos.z * 20.0f)/20.0f };      
+            // Get normalized b_pos, rounded to the nearest 0.01.
+            vector3 n_pos_grid = { roundf(b_pos.x * 100.0f)/100.0f, 0.0f, roundf(b_pos.z * 100.0f)/100.0f };      
 
+            // Used in the grid vert shader to render Flamm's Parabloid
             planetGridPos[i] = n_pos_grid;
 
             matrix4 model = {
-                {1.0, 0.0, 0.0, n_pos.x},
-                {0.0, 1.0, 0.0, n_pos.y},
-                {0.0, 0.0, 1.0, n_pos.z},
-                {0.0, 0.0, 0.0, 1.0}
+                {1.0, 0.0, 0.0, 0.0},
+                {0.0, 1.0, 0.0, 0.0},
+                {0.0, 0.0, 1.0, 0.0},
+                {n_pos.x, n_pos.y, n_pos.z, 1.0},
             };
 
-
-            //Should this exit the program?
-            if (modelLoc == -1){
-                printf("failed to get model from shader\n");
-            }
-
-            glUniformMatrix4fv(modelLoc, 1, GL_TRUE, (const GLfloat *)model);
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, (const GLfloat *)model);
             glBindVertexArray( bodies_array[i]->vao );
-
-            // Setup obj color
-            if(objColorLoc == -1){
-                printf("failed to get objectColor uniform");
-            }
-            glUniform3f(objColorLoc, b->color.r, b->color.g, b->color.b);
-
-            //update the lighting
-
-            if(ambientStrengthLoc == -1){
-                printf("failed to get ambientStrength uniform");
-            }
 
             // Check if a body is defined as a star
             // If yes, give is an ambient strength of max and add it as a light source (iffy)
-            if(b->type == STAR){\
+            if(b->type == STAR){
                 glUniform1f(diffuseStrengthLoc, 1.0f);
-                memcpy(lightModel, model, sizeof(model));
+                memcpy(lightModel[i], model, sizeof(model));
+
                 // keep it always bright (like a star)
                 glUniform1f(ambientStrengthLoc, 1.0f);
+                lightLocations[i] = b_pos;        
+
             } else {
                 glUniform1f(ambientStrengthLoc, 0.08f);
             }
 
-            glUniformMatrix4fv(lightModelLoc, 1, GL_TRUE, (const GLfloat *)lightModel);
+            // Setup obj color
+            glUniform3f(objColorLoc, b->color.r, b->color.g, b->color.b);
+            glUniform3fv(lightPos, numLightSources, (const GLfloat *)lightLocations);
+            glUniformMatrix4fv(lightModelLoc, numLightSources, GL_FALSE, (const GLfloat *)lightModel);
 
             int res = bodies_array[i]->resolution;
+            
             // bytes to render. the 6 is the vertices in the quad for the sphere
             int b_render = res * res * 6; 
             glDrawArrays(GL_TRIANGLES, 0, b_render);
 
-            // Send the radius to the shader for this body
             // Used to calculate Flamm's
             glUseProgram( grid_shaders );
             glUniform1fv(gridBodyRadius, num_bodies, (const GLfloat *)grid_radius);
             glUniform1fv(scharzchildLoc, num_bodies, (const GLfloat *)grid_r_s);
-            
+
         }
 
         glUseProgram( grid_shaders );
-
+        
+        // Magnitude multiplier for spacetime curvature
+        glUniform1f(magnitudeLoc, 1.0f);
         glUniform3fv(gridPosLoc, num_bodies, (const GLfloat *)planetGridPos);
         glUniform1fv(warpLoc, num_bodies, (const GLfloat *)warp);
 
-        draw_grid(g, gridProjLoc, gridViewLoc, gridModelLoc, view, projection);
+        draw_grid(g, gridProjLoc, gridViewLoc, gridModelLoc, (const GLfloat *)view, projection);
+
         glfwSwapBuffers( window );
 
     }

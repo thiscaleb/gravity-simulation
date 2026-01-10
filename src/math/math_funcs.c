@@ -6,12 +6,12 @@
 #include "math/vector/vector2.h"
 
 // normalize values to something that opengl can render
-float normalize(double value, double min, double max) {
+[[gnu::pure]] float normalize(double value, double min, double max) {
 
     float norm = (float)(value - min) / (max - min);
 
-    if(norm < 0.0002f){ // I want to be able to atleast kind of see it
-       return 0.0002f;
+    if(norm < 0.0000005f){ // I want to be able to atleast kind of see it
+       return 0.0000005f;
     }
 
     if(norm > 1.0f){
@@ -22,13 +22,13 @@ float normalize(double value, double min, double max) {
 }
 
 
-float denormalize(double value, double min, double max){
+[[gnu::pure]] float denormalize(double value, double min, double max){
     float original = value * (max - min) + min;
     return original;
 }
 
 // to find the center of gravity
- vector2 find_cog(double m1, vector2 pos1, double m2,  vector2 pos2){
+[[gnu::pure]] vector2 find_cog(double m1, vector2 pos1, double m2,  vector2 pos2){
 
     vector2 barycenter;
 
@@ -44,23 +44,23 @@ float denormalize(double value, double min, double max){
 
 // Models u = G(m1+m2) 
 // Since this is applicable in cases where m1 >> m2, we can assume u ~= Gm1
-double standard_gravitational_parameter(double m1, double m2){
+[[gnu::pure]] double standard_gravitational_parameter(double m1, double m2){
     return (G * (m1 + m2));
 }
 
 // take the mass (kg) of an object and determine its scharzchild radius
-double scharzchild_radius(double mass){
+[[gnu::pure]] double scharzchild_radius(double mass){
     return (2 * G * mass) / (double)(c * c);
 }
 
 // RK4 Helper Function
-vector2 f_x(double t, vector2 x, vector2 v){
+[[gnu::pure]] static vector2 f_x(double t, vector2 x, vector2 v){
     return v;
 }
 
 // RK4 Helper Function
 // This models acceleration in a two body system, relative frame
-vector2 f_v(double t ,vector2 x, vector2 v, double m){
+[[gnu::pure]] static vector2 f_v(double t ,vector2 x, vector2 v, double m){
 
     double r = sqrt(((0.0 -x.x)*(0.0 - x.x)) + ((0.0 - x.y)*(0.0 - x.y)));
 
@@ -71,7 +71,7 @@ vector2 f_v(double t ,vector2 x, vector2 v, double m){
 
 // RK4 Helper Function
 // This models acceleration in a two body system, intertial frame
-vector2 f_v_inertial(double t,vector2 self_pos, vector2 other_pos, double mass_other){
+[[gnu::pure]] static vector2 f_v_inertial(double t,vector2 self_pos, vector2 other_pos, double mass_other){
 
     // these are two position vectors
     vector2 x = self_pos;
@@ -87,9 +87,9 @@ vector2 f_v_inertial(double t,vector2 self_pos, vector2 other_pos, double mass_o
 
 // RK4 Helper Function
 // Models acceleration relative to the Center of Gravity
-vector2 f_v_rel_cog(double t, vector2 self_pos, vector2 other_pos, double mass_other, double mass_self){
+[[gnu::pure]] static vector2 f_v_rel_cog(double t, vector2 self_pos, vector2 other_pos, double mass_other, double mass_self){
 
-    vector2 r_vec = subtract_vec2s(other_pos, self_pos);
+    vector2 r_vec = subtract_vec2s(self_pos, other_pos);
 
     double r = sqrt(r_vec.x * r_vec.x + r_vec.y * r_vec.y);
 
@@ -101,13 +101,8 @@ vector2 f_v_rel_cog(double t, vector2 self_pos, vector2 other_pos, double mass_o
     // Gravitational parameter μ = G * (m1 + m2)
     double u = standard_gravitational_parameter(mass_self, mass_other);
 
-    // Scale factor for acceleration relative to self mass fraction cubed:
-    double mm = mass_self / (mass_self + mass_other);
-    double u_tick = (mm * mm * mm) * u;
-
-    // Acceleration vector: -(u') / r^3 * r_vec
-    // NOTE this is supposed to be negative??? but was reversing my orbits so idk
-    double scale = (1) * (u_tick) / (r * r * r);
+    // Acceleration vector: -(u) / r^3 * r_vec
+    double scale = (-1) * (u) / (r * r * r);
 
     vector2 acceleration = scale_vec2(r_vec, scale);
 
@@ -118,7 +113,7 @@ vector2 f_v_rel_cog(double t, vector2 self_pos, vector2 other_pos, double mass_o
 // Determine the acceleration on body i from N other bodies in the system
 // Newtonian Physics
 // N = NUM_BODIES
-vector2 f_v_nbody(double t, vector2 pos_self, body_2d* bodies[], int index, int N){
+[[gnu::pure]] static vector2 f_v_nbody(double t, vector2 pos_self, body_2d* bodies[], int index, int N){
 
     vector2 accel = {0,0}; // init accel
 
@@ -153,7 +148,6 @@ vector2 f_v_nbody(double t, vector2 pos_self, body_2d* bodies[], int index, int 
     }
 
     return accel;
-
 
 }
 
@@ -258,7 +252,7 @@ void runge_kutta(double t, double h, double m, body_2d *b){
 
 }
 
-
+// Uses the center of gravity between two objects as the reference point
 void cog_ref_runge_kutta(double t, double h, body_2d *body1, body_2d *body2){
 
     // pos, vel, and mass of b1
@@ -279,11 +273,11 @@ void cog_ref_runge_kutta(double t, double h, body_2d *body1, body_2d *body2){
     };
     vector2 com = find_cog(m1, x1_init, m2, x2_init);
 
-    vector2 x1 = { x1_init.x - com.x, x1_init.y - com.y };
-    vector2 x2 = { x2_init.x - com.x, x2_init.y - com.y };
+    vector2 x1 = subtract_vec2s(x1_init, com);
+    vector2 x2 = subtract_vec2s(x2_init, com);
 
-    vector2 v1 = { v1_init.x - v_com.x, v1_init.y - v_com.y };
-    vector2 v2 = { v2_init.x - v_com.x, v2_init.y - v_com.y };
+    vector2 v1 = subtract_vec2s(v1_init, v_com);
+    vector2 v2 = subtract_vec2s(v2_init, v_com);
 
     //rk4 steps
 
@@ -313,11 +307,20 @@ void cog_ref_runge_kutta(double t, double h, body_2d *body1, body_2d *body2){
 
 
 
-    body1->pos = add_vec2s(x1, scale_vec2(add_4vec2s(k1_x1, scale_vec2(k2_x1, 2), scale_vec2(k3_x1, 2), k4_x1), h / 6.0));
-    body1->velocity = add_vec2s(v1, scale_vec2(add_4vec2s(k1_v1, scale_vec2(k2_v1, 2), scale_vec2(k3_v1, 2), k4_v1), h / 6.0));
+    vector2 x1_final = add_vec2s(x1, scale_vec2(add_4vec2s(k1_x1, scale_vec2(k2_x1, 2), scale_vec2(k3_x1, 2), k4_x1), h / 6.0));
+    vector2 v1_final = add_vec2s(v1, scale_vec2(add_4vec2s(k1_v1, scale_vec2(k2_v1, 2), scale_vec2(k3_v1, 2), k4_v1), h / 6.0));
 
-    body2->pos = add_vec2s(x2, scale_vec2(add_4vec2s(k1_x2, scale_vec2(k2_x2, 2), scale_vec2(k3_x2, 2), k4_x2), h / 6.0));
-    body2->velocity = add_vec2s(v2, scale_vec2(add_4vec2s(k1_v2, scale_vec2(k2_v2, 2), scale_vec2(k3_v2, 2), k4_v2), h / 6.0));
+    vector2 x2_final = add_vec2s(x2, scale_vec2(add_4vec2s(k1_x2, scale_vec2(k2_x2, 2), scale_vec2(k3_x2, 2), k4_x2), h / 6.0));
+    vector2 v2_final = add_vec2s(v2, scale_vec2(add_4vec2s(k1_v2, scale_vec2(k2_v2, 2), scale_vec2(k3_v2, 2), k4_v2), h / 6.0));
+
+    // Converting back into world units
+    // Otherwise the visuals are incorrect, and we'll "re-convert" to COG on the next loop
+    body1->pos = add_vec2s(x1_final, com);
+    body1->velocity = add_vec2s(v1_final, v_com);
+
+    body2->pos = add_vec2s(x2_final, com);
+    body2->velocity = add_vec2s(v2_final, v_com);
+
 
 }
 

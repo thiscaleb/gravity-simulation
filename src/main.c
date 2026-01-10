@@ -6,10 +6,12 @@
 #include <getopt.h>
 #include "utils/config_parser.h"
 #include "utils/structures.h"
-#include "physics/gravity.h"
+#include "utils/help.h"
 #include "math/math_funcs.h"
 #include "physics/cr3bp.h"
 #include "graphics/render3d.h"
+#include "graphics/render.h"
+
 
 //Take the string argument for render_mode. Validate that it is correct
 // Return an int code to make it easier to work with
@@ -65,7 +67,7 @@ int main(int argc, char **argv){
                 printf("Time Step Value is: %f\n", TIME_DELTA); 
                 break; 
             case 'h':
-                printf("Help Menu Placeholder!\n"); 
+                print_help_menu();
                 exit(0); // shouldnt continue if help menu called
                 break;
             case 'n': //define the num of bodies
@@ -75,21 +77,37 @@ int main(int argc, char **argv){
                 printf("option needs a value\n"); 
                 break; 
             case '?': 
-                printf("unknown option: %c\n", optopt);
+                printf("Unknown Option: %c\n", optopt);
+                printf("Print the help menu with -h\n");
                 exit(0);
                 break; 
+            default:
+                print_help_menu();
+                exit(1);
+                break;
         } 
     } 
 
     // Ensure that an argument is present
     if (argc < 2) {
-       printf("Atleast one option required. Exiting...\n");
-       exit(0);
+       printf("Atleast one option required. View the help menu with -h. Exiting...\n");
+       exit(1);
     }
 
     //Ensure Num Bodies is not 0
     if(NUM_BODIES == 0){
         printf("NUM_BODIES is set to 0. Please add atleast one.\n");
+        exit(1);
+    }
+
+    if(NUM_BODIES != 2 && (REF_FRAME_CODE == 101 || REF_FRAME_CODE == 102)){
+        printf("Simulation can only run in this mode with two (2) bodies\n");
+        exit(1);
+    }
+
+    if(NUM_BODIES !=3 && REF_FRAME_CODE == 103){
+        printf("Simulation can only run in this mode with three (3) bodies\n");
+        exit(1);
     }
 
     // Create the NUM_BODIES array
@@ -99,7 +117,6 @@ int main(int argc, char **argv){
     // Parse the config file (init.yaml)
     // Maybe I should make the option to pick this filename
     parse_config_file(bodies_array_config, is_3d, NUM_BODIES);
-
 
     // Convert the generics into the proper type for rendering!
     if(is_3d){

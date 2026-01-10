@@ -1,0 +1,28 @@
+# Inner Planets Mockup
+# Run this in 3D, 2D will fail
+bodies:
+  - Name: Sun
+    Mass: 1.989E30
+    Radius: 696700E3
+    Position: 0,0,0
+    Velocity: 0E3, 0E3, 0E3
+    Color: ff1320
+    Type: Star
+  - Name: Mercury
+    Mass: 3.301E23
+    Radius: 9371E4 # would be invisible if it was to scale
+    Position: 56E9, 0, 0
+    Velocity: -10E3,0E3, 30E3
+    Color: ef0101
+  - Name: Venus
+    Mass: 4.867E24
+    Radius: 6051E5 # would be invisible if it was to scale
+    Position: 108E9, 0, 0
+    Velocity: 15E3,1E3, -35E3
+    Color: e0a131
+  - Name: Earth
+    Mass: 5.972E24
+    Radius: 6371E5 # Earth would be invisible if it was to scale
+    Position: -149597870700, 0, 0
+    Velocity: 0E3,0E3, 30E3
+    Color: 00e2ff

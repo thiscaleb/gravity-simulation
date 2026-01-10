@@ -16,3 +16,9 @@ add_subdirectory(src)
 set_target_properties(sim PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/out
 )
+
+if (MSVC)
+    add_compile_options(/W4)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic -O2)
+endif()

@@ -4,8 +4,6 @@
 #include "utils/structures.h"
 #include "utils/constants.h"
 
-vector2 find_cog(double m1,  vector2 pos1, double m2,  vector2 pos2);
-
 double scharzchild_radius(double mass);
 
 double standard_gravitational_parameter(double m1, double m2);
