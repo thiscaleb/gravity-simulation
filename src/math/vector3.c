@@ -71,6 +71,8 @@
     return product;
 }
 
+// Double Vector functions
+
 // A lot of precision is lost. use this sparingly
 vector3 dvector3_to_vector3(dvector3 vec){
     vector3 result;
@@ -78,4 +80,24 @@ vector3 dvector3_to_vector3(dvector3 vec){
     result.y = (float)vec.y;
     result.z = (float)vec.z;
     return result;
+}
+
+dvector3 vector3_to_dvector3(vector3 vec){
+    dvector3 result;
+    result.x = (double)vec.x;
+    result.y = (double)vec.y;
+    result.z = (double)vec.z;
+    return result;
+}
+
+//subtract two vector3s from eachother
+[[gnu::pure]] dvector3 subtract_dvec3s(dvector3 vec1, dvector3 vec2){
+    dvector3 difference = {vec1.x - vec2.x, vec1.y - vec2.y, vec1.z - vec2.z};
+    return difference;
+}
+
+// Scale up a dvector vec by s
+[[gnu::pure]] dvector3 scale_dvec3(dvector3 vec, double s){
+    dvector3 scaled = {vec.x * s, vec.y * s, vec.z * s};
+    return scaled;
 }

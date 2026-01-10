@@ -26,23 +26,22 @@
 
         }
 
-
         double r = vec3_distance_between(pos_self, bodies[i]->pos);
 
-        vector3 ddx = scale_vec3(subtract_vec3s(bodies[i]->pos, pos_self), G*bodies[i]->mass); 
+        dvector3 ddx = scale_dvec3(vector3_to_dvector3(subtract_vec3s(bodies[i]->pos, pos_self)), G*bodies[i]->mass); 
 
         //prevent accel from going to infinity
         // using a dampner maybe? will look into
         const double epsilon = 10E6;
         if (r < epsilon) {
-            printf("\nObject %d and object %d probably collided... Closing Simulation\n", i, index);
+            printf("\nObject %d and object %d probably collided...` Closing Simulation\n", i, index);
             exit(0);
         } 
 
-        ddx = scale_vec3(ddx, 1 / (r * r * r));
-        
+        ddx = scale_dvec3(ddx, 1 / (r * r * r));
 
-        accel = add_vec3s(accel ,ddx);
+        // There is precision lost here
+        accel = add_vec3s(accel, dvector3_to_vector3(ddx));
 
     }
 
@@ -191,8 +190,6 @@ void cog_ref_runge_kutta_3d(double t, double h, body_3d *body1, body_3d *body2){
     vector3 v1_init = body1->velocity; 
     double m1 =  body1->mass;
 
-    printf("x1 init = %f %f %f\n", x1_init.x, x1_init.y, x1_init.z);
-
     // pos, vel, and mass of b2
     vector3 x2_init = body2->pos;
     vector3 v2_init = body2->velocity; 
@@ -214,7 +211,6 @@ void cog_ref_runge_kutta_3d(double t, double h, body_3d *body1, body_3d *body2){
 
     vector3 v1 = subtract_vec3s(v1_init, v_com);
     vector3 v2 = subtract_vec3s(v2_init, v_com);
-    printf("V1 = %f, %f, %f \n",v1.x, v1.y, v1.z);
 
     //rk4 steps
 
@@ -246,6 +242,5 @@ void cog_ref_runge_kutta_3d(double t, double h, body_3d *body1, body_3d *body2){
     body2->pos = add_vec3s(x2, scale_vec3(add_4vec3s(k1_x2, scale_vec3(k2_x2, 2), scale_vec3(k3_x2, 2), k4_x2), h / 6.0));
     body2->velocity = add_vec3s(v2, scale_vec3(add_4vec3s(k1_v2, scale_vec3(k2_v2, 2), scale_vec3(k3_v2, 2), k4_v2), h / 6.0));
 
-    printf("body pos at end = %f %f %f\n", body1->pos.x, body1->pos.y, body1->pos.z);
 
 }
