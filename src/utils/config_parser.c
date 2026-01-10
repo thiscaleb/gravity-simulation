@@ -46,11 +46,10 @@ void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
         // This is where the key/value pairs are
         case YAML_SCALAR_EVENT: 
 
-            if(NUM_BODIES == 0) continue; // temp line while I think about how I want to do this
+            if(NUM_BODIES == NUM_BODIES_YAML) continue; // temp line while I think about how I want to do this
 
                 if(strcmp((const char*)event.data.scalar.value, "Name") == 0){
 
-                    NUM_BODIES--;
                     NUM_BODIES_YAML++;
                     body_t *body = ( body_t* ) malloc(sizeof( body_t ));
                     
@@ -122,8 +121,8 @@ void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
 
                 if(pos_next){
                     char *token;
-                    char *stopstring;                                                   
-
+                    char *stopstring;   
+                    
                     if(is_3d){
                         // get the X
                         token = strtok((char*)event.data.scalar.value, ",");
@@ -286,7 +285,7 @@ void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
         yaml_event_delete(&event);
 
 
-    if(NUM_BODIES != 0){
+    if(NUM_BODIES_YAML + 1 < NUM_BODIES){
         goto bodies_mismatch_error;
     }
 
