@@ -6,6 +6,7 @@
 #include <getopt.h>
 #include "utils/config_parser.h"
 #include "utils/structures.h"
+#include "utils/help.h"
 #include "math/math_funcs.h"
 #include "physics/cr3bp.h"
 #include "graphics/render3d.h"
@@ -66,7 +67,7 @@ int main(int argc, char **argv){
                 printf("Time Step Value is: %f\n", TIME_DELTA); 
                 break; 
             case 'h':
-                printf("Help Menu Placeholder!\n"); 
+                print_help_menu();
                 exit(0); // shouldnt continue if help menu called
                 break;
             case 'n': //define the num of bodies

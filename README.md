@@ -82,7 +82,7 @@ If everything works without any errors, there should now be a `sim.exe` file in 
 | -t   | Set the time delta between steps              | Floats > 0.0            |
 | -d   | Enable debug printing to console              | N/A                     |
 | -h   | Open the help menu                            | N/A                     |
-| -n   | Define the number of bodies to render         | 0 - N                   |
+| -n   | Define the number of bodies to render         | 0 - N (N < 64)                  |
 | -3   | Render the scene in 3d                        | N/A                     |
 
 
