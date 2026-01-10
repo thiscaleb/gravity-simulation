@@ -77,31 +77,37 @@ int main(int argc, char **argv){
                 printf("option needs a value\n"); 
                 break; 
             case '?': 
-                printf("unknown option: %c\n", optopt);
+                printf("Unknown Option: %c\n", optopt);
+                printf("Print the help menu with -h\n");
                 exit(0);
                 break; 
+            default:
+                print_help_menu();
+                exit(1);
+                break;
         } 
     } 
 
     // Ensure that an argument is present
     if (argc < 2) {
-       printf("Atleast one option required. Exiting...\n");
-       exit(0);
+       printf("Atleast one option required. View the help menu with -h. Exiting...\n");
+       exit(1);
     }
 
     //Ensure Num Bodies is not 0
     if(NUM_BODIES == 0){
         printf("NUM_BODIES is set to 0. Please add atleast one.\n");
+        exit(1);
     }
 
     if(NUM_BODIES != 2 && (REF_FRAME_CODE == 101 || REF_FRAME_CODE == 102)){
         printf("Simulation can only run in this mode with two (2) bodies\n");
-        exit(0);
+        exit(1);
     }
 
     if(NUM_BODIES !=3 && REF_FRAME_CODE == 103){
         printf("Simulation can only run in this mode with three (3) bodies\n");
-        exit(0);
+        exit(1);
     }
 
     // Create the NUM_BODIES array

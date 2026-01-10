@@ -28,7 +28,7 @@ void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
 
     yaml_parser_set_input_file(&parser, fh);
 
-    int NUM_BODIES_YAML = 0; // need to check if this is the same or not from the -n option
+    int NUM_BODIES_YAML = -1; // This is set to -1 so that it lines up with the indexes of the array
     bool mass_next = false;
     bool pos_next = false;
     bool vel_next = false;
@@ -41,16 +41,17 @@ void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
 
         switch(event.type)
         {
-        case YAML_NO_EVENT: puts("No event!"); break;
-        case YAML_MAPPING_END_EVENT: NUM_BODIES_YAML++; break;
+        case YAML_NO_EVENT: puts("No Data in YAML!"); break;
 
         // This is where the key/value pairs are
         case YAML_SCALAR_EVENT: 
 
-            if(NUM_BODIES_YAML > NUM_BODIES - 1) continue; // temp line while I think about how I want to do this
+            if(NUM_BODIES == 0) continue; // temp line while I think about how I want to do this
 
                 if(strcmp((const char*)event.data.scalar.value, "Name") == 0){
 
+                    NUM_BODIES--;
+                    NUM_BODIES_YAML++;
                     body_t *body = ( body_t* ) malloc(sizeof( body_t ));
                     
                     if(is_3d){
@@ -276,6 +277,7 @@ void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
 
             break;
 
+        
         }
         if(event.type != YAML_STREAM_END_EVENT)
             yaml_event_delete(&event);
@@ -283,6 +285,12 @@ void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
     } while(event.type != YAML_STREAM_END_EVENT);
         yaml_event_delete(&event);
 
+
+    if(NUM_BODIES != 0){
+        goto bodies_mismatch_error;
+    }
+
+    
     yaml_parser_delete(&parser);
     fclose(fh);
     return;
@@ -290,4 +298,9 @@ void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
     parsing_error:
         printf("Exiting...\n");
         exit(1);
+
+    bodies_mismatch_error:
+        printf("NUM_BODIES defined with -n was more than the number of bodies defined in init.yaml. Exiting with error...\n");
+        exit(1);
+
 }
