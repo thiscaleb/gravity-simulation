@@ -1,4 +1,5 @@
 #include <string.h>
+#include "graphics/orbits.h"
 #include "graphics/render3d.h"
 #include "math/math_funcs.h"
 #include "math/vector/vector3.h"
@@ -194,10 +195,15 @@ void init_3d_bodies(body_3d* bodies_array[], int num_bodies){
 
         vector3 coords = normalize_vec3(b->pos,SPACE_MIN,SPACE_MAX);
 
-        int num_segments = 50; // How many segments in da spheres
+        int num_segments = 80; // How many segments in da spheres
         bodies_array[i]->resolution = num_segments;
+
         // normalizing radii of bodies need to be from 0->SPACE_MAX
         vector3* vertices = drawSphere(coords, normalize(b->radius,0,SPACE_MAX), num_segments);
+
+        // Init the orbit path
+        bodies_array[i]->orbit = init_list();
+        initOrbit(bodies_array[i]->orbit);
 
         // this is magic number-y. I should fix this
         int idx = num_segments * num_segments * 12;
@@ -240,10 +246,10 @@ GLuint init_grid(grid *g){
     // x and z define the bounds to draw
     // y is hardcoded to 0 as the reference point
     // CHANGING THESE REQUIRES A MANUAL CHANGE TO glDrawArrays() in draw_grid!
-    float step = 0.01f;
+    float step = 0.05f;
 
-    float x_init = -1.0f;
-    float z_init = -1.0f;
+    float x_init = -5.0f;
+    float z_init = -5.0f;
 
     int rows = (int)ceilf((fabsf(x_init) + fabsf(z_init)) / step);
 
@@ -364,11 +370,16 @@ void show_debug_message(int run, int nbFrames, body_3d* bodies_array[], int num_
         }
 }
 
-void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const int num_bodies, const bool debug){
+void render3d(body_3d* bodies_array[], Settings* config_settings){
+
+
+    int num_bodies = config_settings->num_bodies;
+    bool debug = config_settings->debug;
+    float timeskip = config_settings->time_delta;
+    int ref_frame_code = config_settings->ref_frame_code;
 
     //start glfw and glad
     GLFWwindow* window = init_render();
-
     //load and compile the shaders
     GLuint shaders = init_shaders();
 
@@ -493,6 +504,9 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
     if(magnitudeLoc == -1){
         printf("Failed to get uniform magnitude\n");
     }
+
+    // Loads the orbit vertex and frag shader
+    GLuint orbit_shader = init_orbit_shaders();
 
     // This gets added to in the init bodies loop below
     int numLightSources = 0;
@@ -665,6 +679,14 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, (const GLfloat *)view);
 
+        //for orbits
+        GLuint viewLoc2 = glGetUniformLocation(orbit_shader, "view");
+        glUseProgram(orbit_shader);
+        glUniformMatrix4fv(viewLoc2, 1, GL_FALSE, (const GLfloat *)view);
+        GLuint projLoc2 = glGetUniformLocation(orbit_shader, "projection");
+        glUseProgram(orbit_shader);
+        glUniformMatrix4fv(projLoc2, 1, GL_FALSE, projection);
+
         // This is the main equation driving the physics
         if(ref_frame_code == 101){
             cog_ref_runge_kutta_3d(0, timeskip, bodies_array[0], bodies_array[1]);
@@ -673,15 +695,20 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
             rk4_nbody_3d(0, timeskip, bodies_array, num_bodies);
 
         }else{
-            
             exit(1); // should never be reached
         }
 
         for(int i=0;i<num_bodies;i++){ 
 
-            glUseProgram( shaders );
-
+            
             body_3d *b = bodies_array[i];
+
+            glUseProgram( orbit_shader );
+            int modelLocationOrbit = glGetUniformLocation(orbit_shader, "model");
+
+            if (modelLocationOrbit == -1){
+                printf("failed to get model from orbit shader");
+            }
 
             // Normalized translation of body (difference from init position to current one)
             // This is used for the model translation
@@ -689,6 +716,21 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
 
             // Normalized Positions of the bodies
             vector3 b_pos = normalize_vec3(b->pos, SPACE_MIN, SPACE_MAX);
+
+
+            // orbits updating
+            // This variable is probably poorly named, but it essentially puts a line in the orbit path once every N frames
+            // where N is the ORBIT_SAMPLING var
+            if(config_settings->draw_orbits){
+                int ORBIT_SAMPLING = 500;
+
+                if(run % ORBIT_SAMPLING == 0){
+                    updateOrbits(b->orbit, b_pos);
+                }
+                
+                glUniformMatrix4fv(modelLocationOrbit, 1, GL_TRUE, (const GLfloat *)identityMatrix4);
+                drawOrbit(b->orbit);
+            }
 
             //glUniform3f(gridRealPos, n_pos.x, n_pos.y, n_pos.z);
            
@@ -705,6 +747,7 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
                 {n_pos.x, n_pos.y, n_pos.z, 1.0},
             };
 
+            glUseProgram( shaders );
             glUniformMatrix4fv(modelLoc, 1, GL_FALSE, (const GLfloat *)model);
             glBindVertexArray( bodies_array[i]->vao );
 
@@ -733,21 +776,26 @@ void render3d(body_3d* bodies_array[], int ref_frame_code, int timeskip, const i
             int b_render = res * res * 6; 
             glDrawArrays(GL_TRIANGLES, 0, b_render);
 
+
+
             // Used to calculate Flamm's
-            glUseProgram( grid_shaders );
-            glUniform1fv(gridBodyRadius, num_bodies, (const GLfloat *)grid_radius);
-            glUniform1fv(scharzchildLoc, num_bodies, (const GLfloat *)grid_r_s);
+            if(config_settings->draw_grid){
+                glUseProgram( grid_shaders );
+                glUniform1fv(gridBodyRadius, num_bodies, (const GLfloat *)grid_radius);
+                glUniform1fv(scharzchildLoc, num_bodies, (const GLfloat *)grid_r_s);
+            }
 
         }
 
-        glUseProgram( grid_shaders );
+        if(config_settings->draw_grid){
+            glUseProgram( grid_shaders );
         
-        // Magnitude multiplier for spacetime curvature
-        glUniform1f(magnitudeLoc, 1.0f);
-        glUniform3fv(gridPosLoc, num_bodies, (const GLfloat *)planetGridPos);
-        glUniform1fv(warpLoc, num_bodies, (const GLfloat *)warp);
-
-        draw_grid(g, gridProjLoc, gridViewLoc, gridModelLoc, (const GLfloat *)view, projection);
+            // Magnitude multiplier for spacetime curvature
+            glUniform1f(magnitudeLoc, 1.0f);
+            glUniform3fv(gridPosLoc, num_bodies, (const GLfloat *)planetGridPos);
+            glUniform1fv(warpLoc, num_bodies, (const GLfloat *)warp);
+            draw_grid(g, gridProjLoc, gridViewLoc, gridModelLoc, (const GLfloat *)view, projection);
+        }
 
         glfwSwapBuffers( window );
 

@@ -1,4 +1,6 @@
-bodies:
+Grid: false #draw the spacetime grid in a 3d scene. Default = True
+Orbits: True #draw the orbit lines
+Bodies:
   - Name: Body1
     Mass: 1.9891E30
     Radius: 695700E4

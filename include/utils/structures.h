@@ -44,6 +44,7 @@ typedef struct body_3d
     GLuint vao;
     vector3 pos;
     vector3 velocity;
+    points_list* orbit;
 } body_3d;
 
 
