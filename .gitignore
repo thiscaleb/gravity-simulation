@@ -4,3 +4,4 @@ out/sim
 *.out
 init.yaml
 test
+test.*
