@@ -1,4 +1,6 @@
 #Sun and Earth Mockup
+Grid: false
+Orbits: True
 bodies:
   - Name: Sun
     Mass: 1.989E30

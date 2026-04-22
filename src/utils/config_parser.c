@@ -10,11 +10,16 @@
 // Currently it works-ish, but isn't very robust, and def needs work
 // Using a body_t to handle 2d and 3d bodies, but it's kinda spaghetti
 // Will need to re-work this later
-void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
+
+
+Settings* parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
     //https://www.wpsoftware.net/andrew/pages/libyaml.html
     FILE *fh = fopen("init.yaml", "r");
     yaml_parser_t parser;
     yaml_event_t  event;
+
+
+    Settings *config_settings = malloc(sizeof(Settings));
 
     if(!yaml_parser_initialize(&parser)){
         puts("Failed to initialize YAML parser. Exiting...");
@@ -35,6 +40,8 @@ void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
     bool radius_next = false;
     bool color_next = false;
     bool type_next = false;
+    bool grid_status_next = false;
+    bool orbit_next = false;
 
     do {
         yaml_parser_parse(&parser, &event);
@@ -104,6 +111,16 @@ void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
 
                 if(strcmp((const char*)event.data.scalar.value, "Type") == 0){
                     type_next = true;
+                    break;
+                }
+
+                if(strcmp((const char*)event.data.scalar.value, "Grid") == 0){
+                    grid_status_next = true;
+                    break;
+                }
+
+                if(strcmp((const char*)event.data.scalar.value, "Orbits") == 0){
+                    orbit_next = true;
                     break;
                 }
 
@@ -267,11 +284,37 @@ void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
                     if(is_3d){
                         // needs to be implemented still
                         const char* type = (const char*)event.data.scalar.value;
-                        if(strcmp(type, "Star") == 0 || strcmp(type, "star")){
+                        if(strcmp(type, "Star") == 0 || strcmp(type, "star") == 0){
                             bodies_array[NUM_BODIES_YAML]->t.as_3d->type = STAR;
                         }
                     }
                     type_next = false;
+                }
+
+                if(grid_status_next){
+
+                    const char* type = (const char*)event.data.scalar.value;
+
+                    if(strcmp(type, "false") == 0 || strcmp(type, "False") == 0){
+                        config_settings->draw_grid = false;
+                    } else {
+                        config_settings->draw_grid = true;
+                    }
+
+                    grid_status_next = false;
+                }
+
+                if(orbit_next){
+                    
+                    const char* type = (const char*)event.data.scalar.value;
+
+                    if(strcmp(type, "false") == 0 || strcmp(type, "False") == 0){
+                        config_settings->draw_orbits = false;
+                    } else {
+                        config_settings->draw_orbits = true;
+                    }
+
+                    orbit_next = false;
                 }
 
             break;
@@ -292,7 +335,7 @@ void parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
     
     yaml_parser_delete(&parser);
     fclose(fh);
-    return;
+    return config_settings;
 
     parsing_error:
         printf("Exiting...\n");

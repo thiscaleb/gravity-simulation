@@ -116,7 +116,11 @@ int main(int argc, char **argv){
 
     // Parse the config file (init.yaml)
     // Maybe I should make the option to pick this filename
-    parse_config_file(bodies_array_config, is_3d, NUM_BODIES);
+    Settings *config_settings = parse_config_file(bodies_array_config, is_3d, NUM_BODIES);
+    config_settings->ref_frame_code = REF_FRAME_CODE;
+    config_settings->time_delta = TIME_DELTA;
+    config_settings->debug = DEBUG;
+    config_settings->num_bodies = NUM_BODIES;
 
     // Convert the generics into the proper type for rendering!
     if(is_3d){
@@ -124,7 +128,8 @@ int main(int argc, char **argv){
         for(int i = 0; i < NUM_BODIES; i++){
             bodies_array[i] = bodies_array_config[i]->t.as_3d;
         }
-        render3d(bodies_array, REF_FRAME_CODE, TIME_DELTA, NUM_BODIES, DEBUG);
+        // Maybe I should make this just pass in a Settings object?
+        render3d(bodies_array, config_settings);
 
     }else{
         body_2d* bodies_array[NUM_BODIES];

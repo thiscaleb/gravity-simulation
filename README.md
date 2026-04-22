@@ -69,12 +69,12 @@ vpckg install libyaml glfw3
 7. Run cmake:
 
 ``` 
-cmake -B  build -S . -G "Ninja" -DCMAKE_C_COMPILER=C:\msys64\mingw64\bin\clang.exe -DCMAKE_TOOLCHAIN_FILE=C:/Users/caleb/Desktop/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake -B  build -S . -G "Ninja" -DCMAKE_C_COMPILER=C:\msys64\mingw64\bin\clang.exe -DCMAKE_TOOLCHAIN_FILE=C:/Users/<USERNAME>/Desktop/vcpkg/scripts/buildsystems/vcpkg.cmake
 ```
 
 **NOTE** If you're getting incompatabiility errors, try running this to force the output to be compatible with the GCC ABI.
 ```
- cmake -B  build -S . -G "Ninja" -DCMAKE_C_COMPILER=C:\msys64\mingw64\bin\clang.exe -DCMAKE_TOOLCHAIN_FILE=C:/Users/caleb/Desktop/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_C_FLAGS="-target x86_64-pc-windows-gnu" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
+ cmake -B  build -S . -G "Ninja" -DCMAKE_C_COMPILER=C:\msys64\mingw64\bin\clang.exe -DCMAKE_TOOLCHAIN_FILE=C:/Users/<USERNAME>/Desktop/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_C_FLAGS="-target x86_64-pc-windows-gnu" -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
  ```
 
 8. `cd build` and then `cmake --build .`
@@ -109,6 +109,9 @@ The different keys that exist are:
 - Type: (currently only star is supported)
     - Star - Gives the body a 100% ambient glow and illuminates other bodies
 
+- Grid: Can be True / False. Toggles the dispaly of the spacetime grid
+- Orbits: Can be True  False. Toggles the display of orbit lines 
+
 
 ### Moving the camera in 3d
 
@@ -122,3 +125,5 @@ You can adjust the speed to be 1x, 2x, or 5x by pressing 1,2, or 5 respectively.
 
 ### Attribution
 - Using the equations from [here](https://orbital-mechanics.space) as a guide.
+
+_Made with 100% home grown, human written code <3_
