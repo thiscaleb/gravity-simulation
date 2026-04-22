@@ -14,6 +14,14 @@
 
 typedef struct camera{
     vector3 pos;
+    float yaw;
+    float pitch;
+    float speed;
+    float rotSpeed;
+    float speedMultiplier;
+    vector3 up;
+    vector3 front;
+    vector3 right;
 } camera;
 
 typedef struct grid{

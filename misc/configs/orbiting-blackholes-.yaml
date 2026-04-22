@@ -2,6 +2,8 @@
 # Run it with:
 # SPACE_MIN = -AU * 3;
 # SPACE_MAX = AU * 3;
+Grid: false
+Orbits: True
 bodies:
   - Name: Body1
     Mass: 90.9891E34

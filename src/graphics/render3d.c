@@ -1,6 +1,7 @@
 #include <string.h>
 #include "graphics/orbits.h"
 #include "graphics/render3d.h"
+#include "graphics/controls.h"
 #include "math/math_funcs.h"
 #include "math/vector/vector3.h"
 #include "math/vector/vector4.h"
@@ -417,14 +418,15 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
 
     // Setup the camera
     camera *cam = malloc(sizeof(camera));
-    vector3 cameraPosDefault = {0, 0.4f,1.5f};
-    float cameraSpeedMultiplier = 1.0f;
-    cam->pos = cameraPosDefault;
-    vector3 up = {0.0f, 1.0f, 0.0f};
 
-    float angle_pitch, angle_yaw;
-    angle_yaw = -90.0f; 
-    angle_pitch = 0.0f;
+    vector3 cameraPosDefault = {0, 0.4f,1.5f};
+    
+    cam->pos = cameraPosDefault;
+    cam->pitch = 0.0f;
+    cam->yaw = -90.0f;
+    cam->speedMultiplier = 1.0f;
+    
+    vector3 up = {0.0f, 1.0f, 0.0f};
 
     // Init the bodies
     init_3d_bodies(bodies_array, num_bodies);
@@ -547,8 +549,8 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
             nbFrames = 0;
         }
 
-        float yaw = angle_yaw * 3.14159f / 180.0f;
-        float pitch = angle_pitch * 3.14159f / 180.0f;
+        float yaw = cam->yaw * 3.14159f / 180.0f;
+        float pitch = cam->pitch * 3.14159f / 180.0f;
 
         // This is used to handle rotation of the camera
         vector3 direction;
@@ -563,104 +565,13 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
         vector3 cameraRight = vec3_unit_vector(cross_product(up, cameraDirection));
         vector3 cameraUp = cross_product(cameraDirection, cameraRight);
 
-        float cameraSpeed = 0.3f * deltaTime * cameraSpeedMultiplier; 
-        float cameraRotSpeed = 2.5f * deltaTime * cameraSpeedMultiplier;
+        cam->speed = 0.3f * deltaTime * cam->speedMultiplier; 
+        cam->rotSpeed = 2.5f * deltaTime * cam->speedMultiplier;
+        cam->front = cameraFront;
+        cam->right = cameraRight;
+        cam->up = cameraUp;
 
-        if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
-            glfwSetWindowShouldClose(window, true);
-        }
-
-        // move camera forward / back
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
-            cam->pos = add_vec3s(cam->pos, scale_vec3(cameraFront, cameraSpeed));
-        }
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
-            cam->pos = add_vec3s(cam->pos, scale_vec3(cameraFront, (-1) * cameraSpeed));
-        }
-        // move camera left / right
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
-            // Splitting this into two lines to make it a bit cleaner
-            vector3 temp = vec3_unit_vector(cross_product(cameraFront, cameraUp)); 
-            cam->pos = add_vec3s(cam->pos, scale_vec3(temp, (-1) * cameraSpeed));
-        }
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
-            vector3 temp = vec3_unit_vector(cross_product(cameraFront, cameraUp)); 
-            cam->pos = add_vec3s(cam->pos, scale_vec3(temp, cameraSpeed));    
-        }
-        // move cam up
-        if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS){
-            cam->pos = add_vec3s(cam->pos, scale_vec3(cameraUp, (-1) * cameraSpeed));
-        }
-        // move cam down
-        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS){
-            cam->pos = add_vec3s(cam->pos, scale_vec3(cameraUp, cameraSpeed));
-        }
-
-        // x rotation
-        if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS){
-            angle_pitch -= cameraRotSpeed;
-            
-        }
-        if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS){
-            angle_pitch += cameraRotSpeed; 
-        }
-
-        // y rotation
-        if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS){
-            angle_yaw -= cameraRotSpeed; 
-        }
-        if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS){
-            angle_yaw += cameraRotSpeed; 
-        }
-
-        // this adjusts the camera speed
-        if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS){
-
-            //Prevent the print statement from popping up hundreds of time per press
-            if(cameraSpeedMultiplier != 1){
-                cameraSpeedMultiplier = 1;
-                puts("\nCamera speed set to 1x");
-            }
-        }
-        // 2x speed
-        if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS){
-
-            //Prevent the print statement from popping up hundreds of time per press
-            if(cameraSpeedMultiplier != 2){
-                cameraSpeedMultiplier = 2;
-                puts("\nCamera speed set to 2x");
-            }
-        }
-        // 5x speed
-        if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS){
-            //Prevent the print statement from popping up hundreds of time per press
-            if(cameraSpeedMultiplier != 5){
-                cameraSpeedMultiplier = 5;
-                puts("\nCamera speed set to 5x");
-            }
-        }
-
-        //Jump to a body (useful on larger scales when stuff is small)
-        // I'll need to edit the lookAt matrix to make the camera look at the object
-        if (glfwGetKey(window, GLFW_KEY_UP)){
-            cam->pos = normalize_vec3(bodies_array[1]->pos, SPACE_MIN, SPACE_MAX);
-            cam->pos.x = cam->pos.x + 0.01f;
-            cam ->pos.y = cam->pos.y + 0.01f;
-        }
-
-        // reset camera to init
-        if (glfwGetKey(window, GLFW_KEY_R)){
-            cam->pos = cameraPosDefault;
-            // Also need to reset the rotation
-            angle_pitch = 0.0f;
-            angle_yaw = -90.0f;
-        }
-
-        // Don't let the user's flip the camera over, it breaks things
-        if(angle_pitch > 89.0f)
-            angle_pitch =  89.0f;
-        if(angle_pitch < -89.0f)
-            angle_pitch = -89.0f;
+        get_input(window, cam);
 
         // View  Rotation Matrix Matrix
         matrix4 view = {
