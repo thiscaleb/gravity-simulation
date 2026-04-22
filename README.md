@@ -109,6 +109,9 @@ The different keys that exist are:
 - Type: (currently only star is supported)
     - Star - Gives the body a 100% ambient glow and illuminates other bodies
 
+- Grid: Can be True / False. Toggles the dispaly of the spacetime grid
+- Orbits: Can be True  False. Toggles the display of orbit lines 
+
 
 ### Moving the camera in 3d
 
@@ -122,3 +125,5 @@ You can adjust the speed to be 1x, 2x, or 5x by pressing 1,2, or 5 respectively.
 
 ### Attribution
 - Using the equations from [here](https://orbital-mechanics.space) as a guide.
+
+_Made with 100% home grown, human written code <3_
