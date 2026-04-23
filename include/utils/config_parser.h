@@ -12,6 +12,6 @@ typedef struct Settings{
     int num_bodies;
 } Settings;
 
-Settings* parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES);
+Settings* parse_config_file(char* filename, body_t* bodies_array[], bool is_3d, int NUM_BODIES);
 
 #endif
