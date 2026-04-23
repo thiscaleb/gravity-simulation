@@ -12,9 +12,9 @@
 // Will need to re-work this later
 
 
-Settings* parse_config_file(body_t* bodies_array[], bool is_3d, int NUM_BODIES){
+Settings* parse_config_file(char* filename, body_t* bodies_array[], bool is_3d, int NUM_BODIES){
     //https://www.wpsoftware.net/andrew/pages/libyaml.html
-    FILE *fh = fopen("init.yaml", "r");
+    FILE *fh = fopen(filename, "r");
     yaml_parser_t parser;
     yaml_event_t  event;
 

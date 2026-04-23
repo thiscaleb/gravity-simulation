@@ -41,8 +41,9 @@ int main(int argc, char **argv){
     int opt;
     int NUM_BODIES = 2; // defaulting this to two seems correct?
     bool is_3d = false;
+    char *config_file = "init.yaml"; //default config file name
 
-    while((opt = getopt(argc, argv, "dm:ht:n:3")) != -1) 
+    while((opt = getopt(argc, argv, "dm:ht:n:3f:")) != -1) 
     { 
         switch(opt) 
         {
@@ -81,6 +82,10 @@ int main(int argc, char **argv){
                 printf("Print the help menu with -h\n");
                 exit(0);
                 break; 
+            case 'f':
+                printf("Config file set to %s\n", optarg);
+                config_file = optarg;
+                break;
             default:
                 print_help_menu();
                 exit(1);
@@ -116,7 +121,7 @@ int main(int argc, char **argv){
 
     // Parse the config file (init.yaml)
     // Maybe I should make the option to pick this filename
-    Settings *config_settings = parse_config_file(bodies_array_config, is_3d, NUM_BODIES);
+    Settings *config_settings = parse_config_file(config_file, bodies_array_config, is_3d, NUM_BODIES);
     config_settings->ref_frame_code = REF_FRAME_CODE;
     config_settings->time_delta = TIME_DELTA;
     config_settings->debug = DEBUG;
