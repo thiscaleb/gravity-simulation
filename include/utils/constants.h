@@ -11,6 +11,8 @@ extern const long AU;
 #define RUN_LIMIT -1
 
 #define PI 3.14159265358979323846f
+#define DEG_TO_RAD (PI / 180.0f)
+#define RAD_TO_DEF (180.0f / PI)
 
 // speed of light in m/s
 extern const long c;
