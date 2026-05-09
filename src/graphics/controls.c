@@ -1,6 +1,8 @@
 #include "graphics/controls.h"
 #include "graphics/render3d.h"
 
+// TODO add helper to make a new input button
+
 // All the if statements for keypresses in GLFW
 // Updates the camera struct as needed
 void get_input(GLFWwindow* window, camera* cam){
@@ -53,6 +55,36 @@ void get_input(GLFWwindow* window, camera* cam){
     if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS){
         cam->yaw += cam->rotSpeed; 
     }
+
+    // track body
+    static bool t_was_pressed = false;
+    bool t_pressed = glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS;
+    if (t_pressed && !t_was_pressed){
+        cam->tracking = !cam->tracking;
+    }
+    t_was_pressed = t_pressed;
+
+    // track prev body
+    static bool left_was_pressed = false;
+    bool left_pressed = glfwGetKey(window, GLFW_KEY_LEFT_BRACKET) == GLFW_PRESS;
+    if (left_pressed && !left_was_pressed){
+        if (!cam->tracking) {
+          return;
+        }
+        cam->tracked_body = (cam->tracked_body - 1 + cam->num_bodies) % cam->num_bodies;
+    }
+    left_was_pressed = left_pressed;
+
+    // track next body
+    static bool right_was_pressed = false;
+    bool right_pressed = glfwGetKey(window, GLFW_KEY_RIGHT_BRACKET) == GLFW_PRESS;
+    if (right_pressed && !right_was_pressed){
+        if (!cam->tracking) {
+          return;
+        }
+        cam->tracked_body = (cam->tracked_body + 1) % cam->num_bodies;
+    }
+    right_was_pressed = right_pressed;
 
     // this adjusts the camera speed
     if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS){

@@ -22,6 +22,10 @@ typedef struct camera{
     vector3 up;
     vector3 front;
     vector3 right;
+    bool tracking;
+    int tracked_body;
+    int num_bodies;
+    vector3 tracking_vector;
 } camera;
 
 typedef struct grid{
