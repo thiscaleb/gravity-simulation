@@ -2,6 +2,7 @@
 #include "graphics/orbits.h"
 #include "graphics/render3d.h"
 #include "graphics/controls.h"
+#include "graphics/legend.h"
 #include "math/math_funcs.h"
 #include "math/vector/vector3.h"
 #include "math/vector/vector4.h"
@@ -384,6 +385,9 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
     //load and compile the shaders
     GLuint shaders = init_shaders();
 
+    // setup the text
+    FT_Setup* ft = ft_setup(config_settings->font);
+
     if(shaders == -1){
         printf("Exiting...\n");
         return;
@@ -460,6 +464,9 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
     float deltaTime = 0.0f;	// Time between current frame and last frame
     int nbFrames = 0;
     int run = 0;
+
+    bool display_legend = false;
+
 
     glUseProgram( shaders );
     // get the uniform locations
@@ -636,6 +643,18 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
         GLuint projLoc2 = glGetUniformLocation(orbit_shader, "projection");
         glUseProgram(orbit_shader);
         glUniformMatrix4fv(projLoc2, 1, GL_FALSE, projection);
+
+        // TODO: Make this cleaner
+        if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) display_legend = true;
+        if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) display_legend = false;
+
+        if(display_legend){
+
+            char text[] = "Legend (WIP)";
+            int text_len = strlen(text);
+            render_text(ft, text, text_len, (vector2){300.0, 400.0}, 0.5f, (vector3){1.0f, 0.3f, 0.0f} );
+
+        }
 
         // This is the main equation driving the physics
         if(ref_frame_code == 101){
