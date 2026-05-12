@@ -25,7 +25,7 @@ typedef struct camera{
     bool tracking;
     int tracked_body;
     int num_bodies;
-    vector3 tracking_vector;
+    svector3 tracking_vector;
 } camera;
 
 typedef struct grid{

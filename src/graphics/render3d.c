@@ -424,14 +424,14 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
     cam->pos = cameraPosDefault;
     cam->pitch = 0.0f;
     cam->yaw = -90.0f;
-    cam->speedMultiplier = 1.0f;
+    cam->speedMultiplier = 3.0f;
     
     vector3 up = {0.0f, 1.0f, 0.0f};
 
     cam->tracking = false;
     cam->tracked_body = 0;
     cam->num_bodies = num_bodies;
-    cam->tracking_vector = (vector3){0.0f, 0.0f, 0.0f};
+    cam->tracking_vector = (svector3){0.0f, 0.0f, 0.0f};
 
     // Init the bodies
     init_3d_bodies(bodies_array, num_bodies);
@@ -549,6 +549,13 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
         lastFrame = currentTime;  
         if ( currentTime - lastTime >= 1.0 && debug){ // If last prinf() was more than 1 sec ago
             show_debug_message(run, nbFrames, bodies_array, num_bodies);
+            if (cam->tracking) {
+                vector3 body_pos = normalize_vec3(bodies_array[cam->tracked_body]->pos, SPACE_MIN, SPACE_MAX);
+                printf("cam pos: (%.3f, %.3f, %.3f) | body pos: (%.3f, %.3f, %.3f) | offset: (%.3f, %.3f, %.3f)\n",
+                    cam->pos.x, cam->pos.y, cam->pos.z,
+                    body_pos.x, body_pos.y, body_pos.z,
+                    cam->tracking_vector.r, cam->tracking_vector.az, cam->tracking_vector.el);
+            }
             lastTime += 1.0;
             nbFrames = 0;
         }
@@ -567,30 +574,21 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
         vector3 cameraFront = vec3_unit_vector(direction);
 
         cam->speed = 0.3f * deltaTime * cam->speedMultiplier; 
-        cam->rotSpeed = 2.5f * deltaTime * cam->speedMultiplier;
+        cam->rotSpeed = 3.0f * deltaTime * cam->speedMultiplier;
         cam->front = cameraFront;
 
-        vector3 prev_camera_pos = cam->pos; // used to compute changing relative vector
-        
         get_input(window, cam);
-        
-        // if tracking, and user is moving the camera, compute the relative tracking vector to the body
-        // if you turn this off (comment out this code), you can have stationary camera tracking. do we want this as a toggle option?
-        if (cam->tracking && ((prev_camera_pos.x != cam->pos.x) ||
-            (prev_camera_pos.y != cam->pos.y) ||
-            (prev_camera_pos.z != cam->pos.z))) 
-            cam->tracking_vector = subtract_vec3s(cam->pos, normalize_vec3(bodies_array[cam->tracked_body]->pos, SPACE_MIN, SPACE_MAX));
- 
+
         // new tracking, capture tracking vector from body to camera in space
         // OR
         // cycled to a different body, recapture the tracking vector
         if ((!was_tracking && cam->tracking) || (was_tracking && cam->tracking && cam->tracked_body != prev_tracked)){
             vector3 normed_track = normalize_vec3(bodies_array[cam->tracked_body]->pos, SPACE_MIN, SPACE_MAX);
-            cam->tracking_vector = subtract_vec3s(cam->pos, normed_track);
+            cam->tracking_vector = cartesian_to_spherical(subtract_vec3s(cam->pos, normed_track));
         }
         // disabled tracking, rsync yaw/pitch from actual look direction
         if (was_tracking && !cam->tracking) {
-            vector3 look = vec3_unit_vector(scale_vec3(cam->tracking_vector, -1.0));
+            vector3 look = vec3_unit_vector(scale_vec3(spherical_to_cartesian(cam->tracking_vector), -1.0));
             cam->pitch = asinf(look.y) * RAD_TO_DEG;
             cam->yaw = atan2f(look.z, look.x) * RAD_TO_DEG;
             cameraFront = look;
@@ -598,17 +596,18 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
         // while tracking is on
         if (cam->tracking) {
             body_3d *target = bodies_array[cam->tracked_body];
-            cam->pos = add_vec3s(normalize_vec3(target->pos, SPACE_MIN, SPACE_MAX), cam->tracking_vector);
-            cameraFront = vec3_unit_vector(subtract_vec3s(normalize_vec3(target->pos, SPACE_MIN, SPACE_MAX), cam->pos));
+            vector3 normalized_target = normalize_vec3(target->pos, SPACE_MIN, SPACE_MAX);
+            cam->pos = add_vec3s(normalized_target, spherical_to_cartesian(cam->tracking_vector));
+            cameraFront = vec3_unit_vector(subtract_vec3s(normalized_target, cam->pos));
         }
-          
+
 
         // These are the steps to calculte the vectors needed for a lookAt matrix
         vector3 cameraTarget = add_vec3s(cameraFront, cam->pos);
         vector3 cameraDirection = vec3_unit_vector(subtract_vec3s(cam->pos, cameraTarget));
         vector3 cameraRight = vec3_unit_vector(cross_product(up, cameraDirection));
         vector3 cameraUp = cross_product(cameraDirection, cameraRight);
-    
+
         // View  Rotation Matrix Matrix
         matrix4 view = {
             {cameraRight.x, cameraUp.x, cameraDirection.x, 0},

@@ -105,8 +105,8 @@ dvector3 vector3_to_dvector3(vector3 vec){
 [[gnu::pure]] svector3 cartesian_to_spherical(vector3 vec) {
     svector3 result;
     result.r = sqrtf((vec.x * vec.x) + (vec.y * vec.y) + (vec.z * vec.z));
-    result.az = atan2f(vec.y, vec.x);
-    result.el = acosf(vec.z / result.r);
+    result.az = atan2f(vec.z, vec.x);
+    result.el = acosf(vec.y / result.r);
     return result;
 }
 
