@@ -101,3 +101,19 @@ dvector3 vector3_to_dvector3(vector3 vec){
     dvector3 scaled = {vec.x * s, vec.y * s, vec.z * s};
     return scaled;
 }
+
+[[gnu::pure]] svector3 cartesian_to_spherical(vector3 vec) {
+    svector3 result;
+    result.r = sqrtf((vec.x * vec.x) + (vec.y * vec.y) + (vec.z * vec.z));
+    result.az = atan2f(vec.y, vec.x);
+    result.el = acosf(vec.z / result.r);
+    return result;
+}
+
+[[gnu::pure]] vector3 spherical_to_cartesian(svector3 vec) {
+    vector3 result;
+    result.x = vec.r * sinf(vec.el) * cosf(vec.az);
+    result.y = vec.r * cosf(vec.el);
+    result.z = vec.r * sinf(vec.el) * sinf(vec.az);
+    return result;
+}
