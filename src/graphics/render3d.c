@@ -401,7 +401,7 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     //define the projection matrix
-    float fov = 60.0f * 3.14159f / 180.0f;
+    float fov = 60.0f * DEG_TO_RAD;
     float aspect = 1600.0f / 900.0f;
     float near = 0.001f;
     float far = 1000.0f;
@@ -424,9 +424,14 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
     cam->pos = cameraPosDefault;
     cam->pitch = 0.0f;
     cam->yaw = -90.0f;
-    cam->speedMultiplier = 1.0f;
+    cam->speedMultiplier = 3.0f;
     
     vector3 up = {0.0f, 1.0f, 0.0f};
+
+    cam->tracking = false;
+    cam->tracked_body = 0;
+    cam->num_bodies = num_bodies;
+    cam->tracking_vector = (svector3){0.0f, 0.0f, 0.0f};
 
     // Init the bodies
     init_3d_bodies(bodies_array, num_bodies);
@@ -535,7 +540,6 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
     vector3 lightLocations[numLightSources]; 
 
     glUniform1i(numLightSourcesLoc, numLightSources);
-
     while ( !glfwWindowShouldClose( window ) ) {
         nbFrames++;
         run++;
@@ -545,12 +549,22 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
         lastFrame = currentTime;  
         if ( currentTime - lastTime >= 1.0 && debug){ // If last prinf() was more than 1 sec ago
             show_debug_message(run, nbFrames, bodies_array, num_bodies);
+            if (cam->tracking) {
+                vector3 body_pos = normalize_vec3(bodies_array[cam->tracked_body]->pos, SPACE_MIN, SPACE_MAX);
+                printf("cam pos: (%.3f, %.3f, %.3f) | body pos: (%.3f, %.3f, %.3f) | offset: (%.3f, %.3f, %.3f)\n",
+                    cam->pos.x, cam->pos.y, cam->pos.z,
+                    body_pos.x, body_pos.y, body_pos.z,
+                    cam->tracking_vector.r, cam->tracking_vector.az, cam->tracking_vector.el);
+            }
             lastTime += 1.0;
             nbFrames = 0;
         }
 
-        float yaw = cam->yaw * 3.14159f / 180.0f;
-        float pitch = cam->pitch * 3.14159f / 180.0f;
+        bool was_tracking = cam->tracking;
+        int prev_tracked = cam->tracked_body;
+
+        float yaw = cam->yaw * DEG_TO_RAD;
+        float pitch = cam->pitch * DEG_TO_RAD;
 
         // This is used to handle rotation of the camera
         vector3 direction;
@@ -559,19 +573,40 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
         direction.z = sin(yaw) * cos(pitch);
         vector3 cameraFront = vec3_unit_vector(direction);
 
+        cam->speed = 0.3f * deltaTime * cam->speedMultiplier; 
+        cam->rotSpeed = 3.0f * deltaTime * cam->speedMultiplier;
+        cam->front = cameraFront;
+
+        get_input(window, cam);
+
+        // new tracking, capture tracking vector from body to camera in space
+        // OR
+        // cycled to a different body, recapture the tracking vector
+        if ((!was_tracking && cam->tracking) || (was_tracking && cam->tracking && cam->tracked_body != prev_tracked)){
+            vector3 normed_track = normalize_vec3(bodies_array[cam->tracked_body]->pos, SPACE_MIN, SPACE_MAX);
+            cam->tracking_vector = cartesian_to_spherical(subtract_vec3s(cam->pos, normed_track));
+        }
+        // disabled tracking, rsync yaw/pitch from actual look direction
+        if (was_tracking && !cam->tracking) {
+            vector3 look = vec3_unit_vector(scale_vec3(spherical_to_cartesian(cam->tracking_vector), -1.0));
+            cam->pitch = asinf(look.y) * RAD_TO_DEG;
+            cam->yaw = atan2f(look.z, look.x) * RAD_TO_DEG;
+            cameraFront = look;
+        }
+        // while tracking is on
+        if (cam->tracking) {
+            body_3d *target = bodies_array[cam->tracked_body];
+            vector3 normalized_target = normalize_vec3(target->pos, SPACE_MIN, SPACE_MAX);
+            cam->pos = add_vec3s(normalized_target, spherical_to_cartesian(cam->tracking_vector));
+            cameraFront = vec3_unit_vector(subtract_vec3s(normalized_target, cam->pos));
+        }
+
+
         // These are the steps to calculte the vectors needed for a lookAt matrix
         vector3 cameraTarget = add_vec3s(cameraFront, cam->pos);
         vector3 cameraDirection = vec3_unit_vector(subtract_vec3s(cam->pos, cameraTarget));
         vector3 cameraRight = vec3_unit_vector(cross_product(up, cameraDirection));
         vector3 cameraUp = cross_product(cameraDirection, cameraRight);
-
-        cam->speed = 0.3f * deltaTime * cam->speedMultiplier; 
-        cam->rotSpeed = 2.5f * deltaTime * cam->speedMultiplier;
-        cam->front = cameraFront;
-        cam->right = cameraRight;
-        cam->up = cameraUp;
-
-        get_input(window, cam);
 
         // View  Rotation Matrix Matrix
         matrix4 view = {
@@ -583,6 +618,9 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
                 (-1) * dot_vec3s(cameraDirection, cam->pos)
                 ,1}
         };
+
+        cam->right = cameraRight;
+        cam->up = cameraUp;
 
         glfwPollEvents();
         glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -608,7 +646,7 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
         }else{
             exit(1); // should never be reached
         }
-
+      
         for(int i=0;i<num_bodies;i++){ 
 
             
