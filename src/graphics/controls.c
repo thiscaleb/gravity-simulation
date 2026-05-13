@@ -40,7 +40,7 @@ void get_input(GLFWwindow* window, camera* cam){
             vector3 temp = vec3_unit_vector(cross_product(cam->front, cam->up)); 
             cam->pos = add_vec3s(cam->pos, scale_vec3(temp, (-1) * cam->speed));
         } else {
-            cam->tracking_vector.az -= cam->rotSpeed * DEG_TO_RAD;
+            cam->tracking_vector.az += cam->rotSpeed * DEG_TO_RAD;
         }
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
@@ -48,7 +48,7 @@ void get_input(GLFWwindow* window, camera* cam){
             vector3 temp = vec3_unit_vector(cross_product(cam->front, cam->up)); 
             cam->pos = add_vec3s(cam->pos, scale_vec3(temp, cam->speed));    
         } else {
-            cam->tracking_vector.az += cam->rotSpeed * DEG_TO_RAD;
+            cam->tracking_vector.az -= cam->rotSpeed * DEG_TO_RAD;
         }
     }
     // move cam up
