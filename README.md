@@ -19,7 +19,6 @@ For a full list of contributors, view the [AUTHORS](AUTHORS) file
 - Make the orbit trails configurable
 - Add textures?
 - Make the bodies spin? (would need textures)
-- Make the camera auto-track an object
 - Make the lighting dim the further you are from an object
 - I'm not entirely sure the COG frame is 100% correct. I'll need to re-review it at a later date
 
@@ -91,22 +90,21 @@ If everything works without any errors, there should now be a `sim.exe` file in 
 | -t   | Set the time delta between steps              | Floats > 0.0            |
 | -d   | Enable debug printing to console              | N/A                     |
 | -h   | Open the help menu                            | N/A                     |
-| -n   | Define the number of bodies to render         | 0 - N (N < 64)                  |
+| -n   | Define the number of bodies to render         | 0 - N (N < 64)          |
 | -3   | Render the scene in 3d                        | N/A                     |
-| -f   | Set path to your init.yaml                    | Filepath                        |
-| -w   | Set path to font used for legend              | Filepath                         |
-
+| -f   | Set the scene config file                     | string (optional)       |
+| -w   | Set path to font used for legend              | Filepath                |
 
 
 ### Inititalization YAML
 
-The initial values for each body is defined in a YAML file, which must be named `init.yaml` and placed in the directory you are running the simulator from. Refer to the `init.example.yaml` for a starting place. 
+The initial values for each body is defined in a YAML file, which must be included with the `-f` flag. Refer to the `init.example.yaml` for a starting place. 
 
 The different keys that exist are:
 
 - Name: The name of the body. This is only used to differentiate them in parsing at this time.
 - Mass: The mass of the body in KG. Scientific notation is allowed. (Ex. 10E3, 1.65E5)
-- Radius: The radius of the body in KGs. Scientific notation is allowed. (Ex. 10E3, 1.65E5)
+- Radius: The radius of the body in meters. Scientific notation is allowed. (Ex. 10E3, 1.65E5)
 - Position: Two (or three) values seperated by a comma to represent the position vector of the body in meters. Scientific notation is allowed. (Ex. 10E3, 1.65E5)
 - Velocity: Two (or three) values seperated by a comma to represent the velocity vector of the body in meters. Scientific notation is allowed. (Ex. 10E3, 1.65E5)
 - Color: Hex color to define the color of the body
@@ -119,9 +117,11 @@ The different keys that exist are:
 
 ### Moving the camera in 3d
 
-In 3D, we can move the camera using WASD, and Space/LeftControl to move along the Y-axis.
-You can rotate the scene with I/K, and J/L
+In 3D, we can move the camera using `W`, `A`, `S`, `D`, and `SPACE`/`LEFT_CONTROL` to move along the Y-axis.
+You can rotate the scene with `I`/`K`, and `J`/`L`
 You can adjust the speed to be 1x, 2x, or 5x by pressing 1,2, or 5 respectively.
+You can also track bodies by pressing `T` and can cycle forwards and backwards through which body you'd like to track with `[` and `]` respectively.
+While tracking bodies, the camera moves around the tracked body using a spherical reference vector. You may move closer or further with `W`/`S` and orbit around the body using `A`/`D` horizontally, and `I`/`K` vertically.
 
 ### Toggling the legend
 
