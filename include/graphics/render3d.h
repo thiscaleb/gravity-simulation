@@ -26,7 +26,7 @@ typedef struct Camera{
     int tracked_body;
     int num_bodies;
     svector3 tracking_vector;
-} camera;
+} Camera;
 
 typedef struct Grid{
     GLuint vbo;
