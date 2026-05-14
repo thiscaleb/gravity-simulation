@@ -108,10 +108,10 @@ FT_Setup* ft_setup(char* font){
 
     float t = 512;
     float r = 512;
-    float b = -512;
+    float b = -t;
     float l = -r;
     float n = 0.1;
-    float f = 100;
+    float f = 1000;
 
     float projection[] = {
         2.0f / (r-l), 0.0f, 0.0f, -(r + l) / ( r - l),
@@ -144,6 +144,8 @@ void render_text(FT_Setup* ft, char text[], int text_len, vector2 position, floa
 
 
     glUseProgram(ft->shaders);
+
+    glUniform3f(glGetUniformLocation(ft->shaders, "textColor"), color.x, color.y, color.z);
 
     GLuint VAO = ft->VAO;
     GLuint VBO = ft->VBO;
@@ -191,5 +193,34 @@ void render_text(FT_Setup* ft, char text[], int text_len, vector2 position, floa
 
     glBindVertexArray(0);
     glBindTexture(GL_TEXTURE_2D, 0);
+
+}
+
+
+void draw_legend(FT_Setup* ft, Camera* cam, body_3d* bodies_array[], double nbFrames){
+
+    char* text;
+    float scale = 0.4f;
+
+    if(cam->tracking){
+        asprintf(&text, "Tracking Object: %s", bodies_array[cam->tracked_body]->name);
+    } else {
+        asprintf(&text, "Tracking Object: None");
+    }
+
+    int text_len = strlen(text);
+    render_text(ft, text, text_len, (vector2){260.0, 400.0}, scale, (vector3){0.5f, 0.3f, 0.8f} );
+
+    char* fps;
+    asprintf(&fps, "FPS: %0.1f", (double)nbFrames / 1.0);
+    text_len = strlen(fps);
+
+    render_text(ft, fps, text_len, (vector2){260.0, 350.0}, scale, (vector3){0.5f, 0.3f, 0.8f} );
+
+    char* time;
+    asprintf(&time, "Runtime: %0.3f", glfwGetTime());
+    text_len = strlen(time);
+
+    render_text(ft, time, text_len, (vector2){260.0, 300.0}, scale, (vector3){0.5f, 0.3f, 0.8f} );
 
 }

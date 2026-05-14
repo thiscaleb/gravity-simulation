@@ -229,7 +229,7 @@ void init_3d_bodies(body_3d* bodies_array[], int num_bodies){
 
 }
 
-GLuint init_grid(grid *g){
+GLuint init_grid(Grid *g){
 
     GLuint vao, vbo;
 
@@ -342,7 +342,7 @@ GLuint init_grid(grid *g){
     return grid_shaders;
 }
 
-void draw_grid(grid *g, GLuint projLoc, GLuint viewLoc, GLuint modelLoc, const float* view, float* projection){
+void draw_grid(Grid *g, GLuint projLoc, GLuint viewLoc, GLuint modelLoc, const float* view, float* projection){
 
     //GLuint projLoc = glGetUniformLocation(grid_shaders, "projection");
     glUniformMatrix4fv(projLoc, 1, GL_FALSE, projection);
@@ -421,7 +421,7 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
 
 
     // Setup the camera
-    camera *cam = malloc(sizeof(camera));
+    Camera *cam = malloc(sizeof(Camera));
 
     vector3 cameraPosDefault = {0, 0.4f,1.5f};
     
@@ -441,7 +441,7 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
     init_3d_bodies(bodies_array, num_bodies);
 
     // Init the grid
-    grid *g = ( grid* )malloc(sizeof(grid));
+    Grid *g = ( Grid* )malloc(sizeof(Grid));
     GLuint grid_shaders = init_grid(g);
     GLuint warpLoc = glGetUniformLocation(grid_shaders, "warp");
     GLuint gridPosLoc = glGetUniformLocation(grid_shaders, "gridPos");
@@ -648,11 +648,10 @@ void render3d(body_3d* bodies_array[], Settings* config_settings){
         if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) display_legend = true;
         if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) display_legend = false;
 
+
         if(display_legend){
 
-            char text[] = "Legend (WIP)";
-            int text_len = strlen(text);
-            render_text(ft, text, text_len, (vector2){300.0, 400.0}, 0.5f, (vector3){1.0f, 0.3f, 0.0f} );
+            draw_legend(ft, cam, bodies_array, nbFrames);
 
         }
 

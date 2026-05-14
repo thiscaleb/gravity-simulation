@@ -139,7 +139,6 @@ int main(int argc, char **argv){
         for(int i = 0; i < NUM_BODIES; i++){
             bodies_array[i] = bodies_array_config[i]->t.as_3d;
         }
-        // Maybe I should make this just pass in a Settings object?
         render3d(bodies_array, config_settings);
 
     }else{

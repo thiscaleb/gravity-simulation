@@ -6,6 +6,7 @@
 #include "math/vector/vector2.h"
 #include "math/vector/vector3.h"
 #include <glad.h>
+#include "graphics/render3d.h"
 
 typedef struct {
     unsigned int TextureID;  // ID handle of the glyph texture
@@ -24,5 +25,7 @@ typedef struct {
 FT_Setup* ft_setup(char* font);
 
 void render_text(FT_Setup* ft, char text[], int text_len, vector2 position, float scale, vector3 color);
+
+void draw_legend(FT_Setup* ft, Camera* cam, body_3d* bodies_array[], double nbFrames);
 
 #endif

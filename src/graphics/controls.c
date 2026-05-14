@@ -5,7 +5,7 @@
 
 // All the if statements for keypresses in GLFW
 // Updates the camera struct as needed
-void get_input(GLFWwindow* window, camera* cam){
+void get_input(GLFWwindow* window, Camera* cam){
     
     vector3 cameraPosDefault = {0, 0.4f,1.5f};
 
