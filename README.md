@@ -29,6 +29,7 @@ For a full list of contributors, view the [AUTHORS](AUTHORS) file
 
 - OpenGL 4.3+
 - GCC 14+ / Clang 18+
+- Freetype2
 
 ### Compiling from Source
 
@@ -121,6 +122,11 @@ The different keys that exist are:
 In 3D, we can move the camera using WASD, and Space/LeftControl to move along the Y-axis.
 You can rotate the scene with I/K, and J/L
 You can adjust the speed to be 1x, 2x, or 5x by pressing 1,2, or 5 respectively.
+
+### Toggling the legend
+
+A legend which displays Tracked Body, Runtime, and FPS can be toggled on by pressing `O`. 
+The legend is currently a WIP, and more values will be shown in the future
 
 ### Known Issues
 - Compiling with an optimization setting higher than -O0 can cause crashes on Nvidia GPUs
